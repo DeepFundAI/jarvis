@@ -1,5 +1,5 @@
 import html2canvas from "html2canvas";
-import { AgentContext, BaseBrowserLabelsAgent } from "@eko-ai/eko";
+import { AgentContext, BaseBrowserLabelsAgent } from "@jarvis-agent/core";
 
 export default class BrowserAgent extends BaseBrowserLabelsAgent {
   protected async screenshot(

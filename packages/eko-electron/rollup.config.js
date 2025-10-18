@@ -14,7 +14,7 @@ export default [
         sourcemap: true
       }
     ],
-    external: ["dotenv", "@jarvis-agent/core", "playwright"],
+    external: ["@jarvis-agent/core", "electron", "glob", "fs", "fs/promises", "path", "child_process"],
     plugins: [
       json(),
       commonjs(),
@@ -38,12 +38,12 @@ export default [
         sourcemap: true
       }
     ],
-    external: ["dotenv", "@jarvis-agent/core", "playwright"],
+    external: ["@jarvis-agent/core", "electron", "glob", "fs", "fs/promises", "path", "child_process"],
     plugins: [
       json(),
       commonjs(),
       resolve({
-        browser: true,
+        browser: false,
         preferBuiltins: true,
       }),
       typescript(),

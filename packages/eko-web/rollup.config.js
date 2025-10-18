@@ -13,7 +13,7 @@ export default [
         sourcemap: true
       }
     ],
-    external: ["@eko-ai/eko"],
+    external: ["@jarvis-agent/core"],
     plugins: [
       commonjs(),
       resolve({
@@ -36,7 +36,7 @@ export default [
         sourcemap: true
       }
     ],
-    external: ["@eko-ai/eko"],
+    external: ["@jarvis-agent/core"],
     plugins: [
       commonjs(),
       resolve({

@@ -601,7 +601,7 @@ export default abstract class BaseBrowserLabelsAgent extends BaseBrowserAgent {
       messages.push({
         role: "user",
         content: [
-          ...image_contents,
+          // ...image_contents,
           {
             type: "text",
             text: pseudoHtmlDescription + "```html\n" + result.pseudoHtml + "\n```",

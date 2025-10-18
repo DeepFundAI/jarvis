@@ -12,6 +12,7 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAmazonBedrock } from "@ai-sdk/amazon-bedrock";
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createDeepSeek } from "@ai-sdk/deepseek";
 import {
   LLMs,
   LLMRequest,
@@ -308,6 +309,13 @@ export class RetryLanguageModel {
         fetch: llm.fetch,
         headers: llm.config?.headers,
         compatibility: llm.config?.compatibility,
+      }).languageModel(llm.model);
+    } else if (llm.provider == "deepseek") {
+      return createDeepSeek({
+        apiKey: apiKey,
+        baseURL: baseURL,
+        fetch: llm.fetch,
+        headers: llm.config?.headers,
       }).languageModel(llm.model);
     } else {
       return llm.provider.languageModel(llm.model);

@@ -1,9 +1,18 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { glob } from "glob";
+import { glob } from 'glob';
 import { AgentContext, BaseFileAgent } from "@jarvis-agent/core";
+import { WebContentsView, app } from "electron";
 
 export default class FileAgent extends BaseFileAgent {
+
+  private detailView: WebContentsView;
+
+  constructor(detailView: WebContentsView, work_path?: string, mcpClient?: any) {
+    super(work_path, ['default'], [], mcpClient);
+    this.detailView = detailView;
+  }
+
   protected async file_list(
     agentContext: AgentContext,
     directoryPath: string
@@ -46,13 +55,22 @@ export default class FileAgent extends BaseFileAgent {
     content: string,
     append: boolean
   ): Promise<any> {
+    
     const directory = path.dirname(filePath);
+    const fileName = path.basename(filePath);
     await fs.mkdir(directory, { recursive: true });
+    // this.mainView.webContents.loadURL(`http://localhost:5173/static/${fileName}`);
     if (append) {
       await fs.appendFile(filePath, content, "utf-8");
     } else {
       await fs.writeFile(filePath, content, "utf-8");
     }
+    // 根据运行环境选择合适的预览地址
+    const previewUrl = app.isPackaged
+      ? `client://${fileName}`                          // 生产环境使用自定义协议
+      : `http://localhost:5173/static/${fileName}`;     // 开发环境使用本地服务
+
+    this.detailView.webContents.send('file-updated', 'preview', previewUrl);
   }
 
   protected async file_str_replace(
@@ -84,7 +102,7 @@ export default class FileAgent extends BaseFileAgent {
     }>
   > {
     const pattern = path.join(directoryPath, globPattern);
-    const files = await glob.glob(pattern);
+    const files = await glob(pattern);
     const fileDetails = await Promise.all(
       files.map(async (file) => {
         const stats = await fs.stat(file);

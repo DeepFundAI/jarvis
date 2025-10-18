@@ -1,5 +1,5 @@
-import { Eko, LLMs, StreamCallbackMessage } from "@eko-ai/eko";
-import { BrowserAgent } from "@eko-ai/eko-web";
+import { Eko, LLMs, StreamCallbackMessage } from "@jarvis-agent/core";
+import { BrowserAgent } from "@jarvis-agent/web";
 
 export async function auto_test_case() {
   // Initialize LLM provider

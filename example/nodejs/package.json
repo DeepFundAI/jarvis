@@ -17,8 +17,8 @@
   ],
   "dependencies": {
     "playwright": "^1.52.0",
-    "@eko-ai/eko": "file:../../packages/eko-core",
-    "@eko-ai/eko-nodejs": "file:../../packages/eko-nodejs"
+    "@jarvis-agent/core": "file:../../packages/eko-core",
+    "@jarvis-agent/nodejs": "file:../../packages/eko-nodejs"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.3",

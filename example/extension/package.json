@@ -15,8 +15,8 @@
     "antd": "^5.22.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@eko-ai/eko": "workspace:*",
-    "@eko-ai/eko-extension": "workspace:*"
+    "@jarvis-agent/core": "workspace:*",
+    "@jarvis-agent/extension": "workspace:*"
   },
   "devDependencies": {
     "@types/chrome": "0.0.158",

@@ -1,4 +1,4 @@
-import { Log } from "@eko-ai/eko";
+import { Log } from "@jarvis-agent/core";
 import { SimpleStdioMcpClient } from "../src";
 
 async function testMcp() {

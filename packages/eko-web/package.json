@@ -1,7 +1,7 @@
 {
-  "name": "@eko-ai/eko-web",
-  "version": "3.1.0",
-  "description": "Empowering language to transform human words into action.",
+  "name": "@jarvis-agent/web",
+  "version": "0.1.2",
+  "description": "Browser/Web environment support for Jarvis Agent framework.",
   "main": "dist/index.cjs.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
@@ -25,8 +25,10 @@
   "author": "FellouAI",
   "license": "MIT",
   "keywords": [
-    "fellou",
-    "eko"
+    "jarvis",
+    "jarvis-agent",
+    "web",
+    "browser"
   ],
   "publishConfig": {
     "access": "public",
@@ -34,10 +36,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/FellouAI/eko.git"
+    "url": "git+https://github.com/yourusername/jarvis-agent.git"
   },
   "dependencies": {
-    "@eko-ai/eko": "workspace:*",
+    "@jarvis-agent/core": "^0.1.2",
     "html2canvas": "^1.4.1"
   },
   "devDependencies": {

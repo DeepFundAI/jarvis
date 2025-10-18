@@ -1,6 +1,6 @@
-import { Eko, LLMs, StreamCallbackMessage } from "@eko-ai/eko";
-import { StreamCallback, HumanCallback } from "@eko-ai/eko/types";
-import { BrowserAgent } from "@eko-ai/eko-extension";
+import { Eko, LLMs, StreamCallbackMessage } from "@jarvis-agent/core";
+import { StreamCallback, HumanCallback } from "@jarvis-agent/core/types";
+import { BrowserAgent } from "@jarvis-agent/extension";
 
 export async function getLLMConfig(name: string = "llmConfig"): Promise<any> {
   let result = await chrome.storage.sync.get([name]);

@@ -59,34 +59,6 @@ export class SimpleStdioMcpClient implements IMcpClient {
     Log.info("MCP Client, connection successful:", this.command, this.args);
   }
 
-  async listTools(
-    param: McpListToolParam,
-    signal?: AbortSignal
-  ): Promise<McpListToolResult> {
-    const message = await this.sendMessage(
-      "tools/list",
-      {
-        ...param,
-      },
-      signal
-    );
-    return message.result.tools || [];
-  }
-
-  async callTool(
-    param: McpCallToolParam,
-    signal?: AbortSignal
-  ): Promise<ToolResult> {
-    const message = await this.sendMessage(
-      "tools/call",
-      {
-        ...param,
-      },
-      signal
-    );
-    return message.result;
-  }
-
   async sendMessage(
     method: string,
     params: Record<string, any> = {},
@@ -123,39 +95,46 @@ export class SimpleStdioMcpClient implements IMcpClient {
       if (!suc) {
         throw new Error("SseClient Response Exception: " + message);
       }
-      const messageData = await callback;
-      this.handleError(method, messageData);
-      return messageData;
+      return await callback;
     } finally {
       this.requestMap.delete(id);
     }
   }
 
-  private handleError(method: string, message: any) {
-    if (!message) {
-      throw new Error(`MCP ${method} error: no response`);
+  async listTools(
+    param: McpListToolParam,
+    signal?: AbortSignal
+  ): Promise<McpListToolResult> {
+    const message = await this.sendMessage(
+      "tools/list",
+      {
+        ...param,
+      },
+      signal
+    );
+    if (message.error) {
+      Log.error("McpClient listTools error: ", param, message);
+      throw new Error("listTools Exception");
     }
-    if (message?.error) {
-      Log.error(`MCP ${method} error: ` + message.error);
-      throw new Error(
-        `MCP ${method} error: ` +
-          (typeof message.error === "string"
-            ? message.error
-            : message.error.message)
-      );
+    return message.result.tools || [];
+  }
+
+  async callTool(
+    param: McpCallToolParam,
+    signal?: AbortSignal
+  ): Promise<ToolResult> {
+    const message = await this.sendMessage(
+      "tools/call",
+      {
+        ...param,
+      },
+      signal
+    );
+    if (message.error) {
+      Log.error("McpClient callTool error: ", param, message);
+      throw new Error("callTool Exception");
     }
-    if (message.result?.isError == true) {
-      if (message.result.content) {
-        throw new Error(
-          `MCP ${method} error: ` +
-            (typeof message.result.content === "string"
-              ? message.result.content
-              : message.result.content[0].text)
-        );
-      } else {
-        throw new Error(`MCP ${method} error: ` + JSON.stringify(message.result));
-      }
-    }
+    return message.result;
   }
 
   isConnected(): boolean {

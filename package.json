@@ -1,24 +1,31 @@
 {
-  "name": "@eko-ai/eko",
-  "version": "3.1.0",
-  "description": "Empowering language to transform human words into action.",
+  "name": "@jarvis-agent/monorepo",
+  "version": "0.1.0",
+  "description": "A production-ready JavaScript AI Agent framework for creating reliable agents across browser and Node.js environments.",
   "workspaces": [
     "packages/eko-core",
+    "packages/eko-electron",
     "packages/eko-extension",
     "packages/eko-nodejs",
     "packages/eko-web"
   ],
   "scripts": {
     "build": "pnpm -r --sequential build",
-    "build-eko": "pnpm --filter @eko-ai/eko build",
+    "build-core": "pnpm --filter @jarvis-agent/core build",
     "test": "pnpm -r --sequential test",
     "clean": "rm -rf node_modules && pnpm -r exec -- rm -rf node_modules dist"
   },
   "author": "FellouAI",
   "license": "MIT",
   "keywords": [
-    "fellou",
-    "eko"
+    "jarvis",
+    "jarvis-agent",
+    "ai-agent",
+    "automation",
+    "browser-automation",
+    "workflow",
+    "llm",
+    "agent-framework"
   ],
   "publishConfig": {
     "access": "public",
@@ -26,9 +33,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/FellouAI/eko.git"
+    "url": "git+https://github.com/yourusername/jarvis-agent.git"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
-  }
+  },
+  "packageManager": "pnpm@10.18.2+sha512.9fb969fa749b3ade6035e0f109f0b8a60b5d08a1a87fdf72e337da90dcc93336e2280ca4e44f2358a649b83c17959e9993e777c2080879f3801e6f0d999ad3dd"
 }

@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
-import { BrowserAgent, FileAgent } from "@eko-ai/eko-nodejs";
-import { Eko, Agent, Log, LLMs, StreamCallbackMessage } from "@eko-ai/eko";
+import { BrowserAgent, FileAgent } from "@jarvis-agent/nodejs";
+import { Eko, Agent, Log, LLMs, StreamCallbackMessage } from "@jarvis-agent/core";
 
 dotenv.config();
 

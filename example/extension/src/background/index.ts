@@ -1,4 +1,4 @@
-import { Eko } from "@eko-ai/eko";
+import { Eko } from "@jarvis-agent/core";
 import { main } from "./main";
 
 var eko: Eko;

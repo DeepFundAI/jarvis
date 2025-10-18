@@ -16,6 +16,7 @@ import {
 import Context, { AgentContext } from "../core/context";
 
 export type LLMprovider =
+  | "deepseek"
   | "openai"
   | "anthropic"
   | "google"

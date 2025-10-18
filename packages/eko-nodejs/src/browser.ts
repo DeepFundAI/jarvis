@@ -1,4 +1,4 @@
-import { AgentContext, BaseBrowserLabelsAgent } from "@eko-ai/eko";
+import { AgentContext, BaseBrowserLabelsAgent } from "@jarvis-agent/core";
 import {
   chromium,
   Browser,

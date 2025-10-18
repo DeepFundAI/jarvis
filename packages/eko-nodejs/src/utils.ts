@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { Log } from "@eko-ai/eko";
+import { Log } from "@jarvis-agent/core";
 
 export async function getCdpWsEndpoint(port: number): Promise<string> {
   // Example => ws://localhost:9222/devtools/browser/{session-id}
