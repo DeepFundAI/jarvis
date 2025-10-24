@@ -1,6 +1,6 @@
 {
   "name": "@jarvis-agent/core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A production-ready JavaScript AI Agent framework for creating reliable agents across browser and Node.js environments.",
   "main": "dist/index.cjs.js",
   "module": "dist/index.esm.js",
