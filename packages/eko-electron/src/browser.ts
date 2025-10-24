@@ -101,48 +101,48 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
   // NOTE: This method requires external store dependency - commented out for npm package
   // protected async get_xiaohongshu_video_url(xiaohongshuUrl: string): Promise<string> {
   //   try {
-  //     // 从Electron store获取视频地址
+  //     // Get video URL from Electron store
   //     const videoUrlMap = store.get('videoUrlMap', {});
   //     const videoInfo = videoUrlMap[xiaohongshuUrl];
 
   //     if (videoInfo && videoInfo.platform === 'xiaohongshu' && videoInfo.videoUrl) {
-  //       console.log('从store中获取到小红书视频地址:', videoInfo.videoUrl);
+  //       console.log('Retrieved Xiaohongshu video URL from store:', videoInfo.videoUrl);
   //       return videoInfo.videoUrl;
   //     } else {
-  //       throw new Error('未找到该小红书页面的视频地址，请先在detailView中打开页面');
+  //       throw new Error('Video URL not found for this Xiaohongshu page, please open the page in detailView first');
   //     }
   //   } catch (error) {
-  //     console.error('获取小红书视频地址失败:', error);
-  //     throw new Error(`获取视频地址失败: ${error instanceof Error ? error.message : '未知错误'}`);
+  //     console.error('Failed to get Xiaohongshu video URL:', error);
+  //     throw new Error(`Failed to get video URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
   //   }
   // }
 
-  // 重写 extract_page_content 方法以支持PDF
+  // Override extract_page_content method to support PDF
   protected async extract_page_content(agentContext: AgentContext): Promise<any> {
     const currentUrl = this.detailView.webContents.getURL();
 
-    // 检测是否为PDF页面
+    // Detect if this is a PDF page
     if (this.isPdfUrl(currentUrl) || await this.isPdfPage(agentContext)) {
       return await this.extractPdfContent(agentContext);
     }
 
-    // 调用父类的HTML内容提取
+    // Call parent class HTML content extraction
     return await super.extract_page_content(agentContext);
   }
 
-  // 检测URL是否为PDF
+  // Detect if URL is a PDF
   private isPdfUrl(url: string): boolean {
     return url.toLowerCase().includes('.pdf') ||
            url.includes('application/pdf') ||
            url.includes('viewer.html') || // Chrome PDF viewer
-           url.includes('#page='); // PDF页面锚点
+           url.includes('#page='); // PDF page anchor
   }
 
-  // 检测当前页面是否为PDF
+  // Detect if current page is a PDF
   private async isPdfPage(agentContext: AgentContext): Promise<boolean> {
     try {
       return await this.execute_script(agentContext, () => {
-        // 检测PDF查看器特征
+        // Detect PDF viewer characteristics
         return document.querySelector('embed[type="application/pdf"]') !== null ||
                document.querySelector('iframe[src*=".pdf"]') !== null ||
                document.querySelector('#viewer') !== null || // Chrome PDF viewer
@@ -151,49 +151,49 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
                window.location.href.includes('viewer.html');
       }, []);
     } catch (error) {
-      console.warn('PDF检测失败:', error);
+      console.warn('PDF detection failed:', error);
       return false;
     }
   }
 
-  // 提取PDF内容
+  // Extract PDF content
   private async extractPdfContent(agentContext: AgentContext): Promise<any> {
     try {
       return await this.execute_script(agentContext, () => {
         return new Promise(async (resolve) => {
           try {
-            // 动态加载PDF.js
+            // Dynamically load PDF.js
             if (!(window as any).pdfjsLib) {
-              console.log('开始加载PDF.js库...');
+              console.log('Starting to load PDF.js library...');
 
-              // 加载PDF.js主文件
+              // Load PDF.js main file
               const script = document.createElement('script');
               script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
               script.crossOrigin = 'anonymous';
 
               await new Promise((scriptResolve, scriptReject) => {
                 script.onload = () => {
-                  console.log('PDF.js主文件加载成功');
+                  console.log('PDF.js main file loaded successfully');
                   scriptResolve(true);
                 };
                 script.onerror = () => {
-                  console.error('PDF.js主文件加载失败');
-                  scriptReject(new Error('PDF.js加载失败'));
+                  console.error('Failed to load PDF.js main file');
+                  scriptReject(new Error('Failed to load PDF.js'));
                 };
                 document.head.appendChild(script);
               });
 
-              // 配置worker
+              // Configure worker
               (window as any).pdfjsLib!.GlobalWorkerOptions.workerSrc =
                 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-              console.log('PDF.js配置完成');
+              console.log('PDF.js configuration completed');
             }
 
-            // 获取PDF URL
+            // Get PDF URL
             let pdfUrl = window.location.href;
 
-            // 尝试从各种PDF容器中获取实际PDF URL
+            // Try to get actual PDF URL from various PDF containers
             const embedEl = document.querySelector('embed[type="application/pdf"]') as HTMLEmbedElement;
             const iframeEl = document.querySelector('iframe[src*=".pdf"]') as HTMLIFrameElement;
 
@@ -202,15 +202,15 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
             } else if (iframeEl && iframeEl.src && iframeEl.src !== 'about:blank' && !iframeEl.src.startsWith('about:')) {
               pdfUrl = iframeEl.src;
             } else if (window.location.href.includes('viewer.html')) {
-              // Chrome PDF viewer格式: chrome://pdf-viewer/index.html?src=URL
+              // Chrome PDF viewer format: chrome://pdf-viewer/index.html?src=URL
               const urlParams = new URLSearchParams(window.location.search);
               const srcParam = urlParams.get('src') || urlParams.get('file');
               if (srcParam) {
                 pdfUrl = decodeURIComponent(srcParam);
               }
             } else if (pdfUrl === window.location.href && (pdfUrl === 'about:blank' || pdfUrl.startsWith('about:'))) {
-              // 如果当前URL也是about:blank，尝试其他方法获取真实PDF URL
-              // 检查页面中是否有其他包含PDF URL的线索
+              // If current URL is also about:blank, try other methods to get real PDF URL
+              // Check if page has other clues containing PDF URL
               const allEmbeds = document.querySelectorAll('embed');
               const allIframes = document.querySelectorAll('iframe');
 
@@ -233,22 +233,22 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
               }
             }
 
-            console.log('正在解析PDF:', pdfUrl);
+            console.log('Parsing PDF:', pdfUrl);
 
-            // 验证PDF URL是否有效
+            // Validate if PDF URL is valid
             if (!pdfUrl || pdfUrl === 'about:blank' || pdfUrl.startsWith('about:') || (pdfUrl === window.location.href && !pdfUrl.includes('.pdf'))) {
-              console.warn('无法获取有效的PDF URL:', pdfUrl);
+              console.warn('Unable to get valid PDF URL:', pdfUrl);
               resolve({
-                title: document.title || 'PDF文档',
+                title: document.title || 'PDF Document',
                 page_url: window.location.href,
-                page_content: '当前页面无法解析为PDF文件，可能是页面尚未加载完成或不包含PDF内容。建议稍后重试或检查页面是否正确显示PDF。',
+                page_content: 'Current page cannot be parsed as a PDF file. The page may not be fully loaded or does not contain PDF content. Please try again later or check if the page displays the PDF correctly.',
                 error: false,
                 content_type: 'pdf'
               });
               return;
             }
 
-            // 加载PDF文档
+            // Load PDF document
             const loadingTask = (window as any).pdfjsLib!.getDocument({
               url: pdfUrl,
               cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
@@ -256,14 +256,14 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
             });
 
             const pdf = await loadingTask.promise;
-            console.log('PDF文档加载成功, 总页数:', pdf.numPages);
+            console.log('PDF document loaded successfully, total pages:', pdf.numPages);
 
             let fullText = '';
             const numPages = pdf.numPages;
-            // TODO 后续进行页面提取分割
+            // TODO: Implement page extraction splitting in the future
             const maxPages = numPages;
 
-            // 提取所有页面文本
+            // Extract text from all pages
             for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
               try {
                 const page = await pdf.getPage(pageNum);
@@ -274,26 +274,26 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
                   .join(' ');
 
                 if (pageText.trim()) {
-                  fullText += `\n--- 第${pageNum}页 ---\n${pageText.trim()}\n`;
+                  fullText += `\n--- Page ${pageNum} ---\n${pageText.trim()}\n`;
                 }
 
-                console.log(`第${pageNum}页文本提取完成`);
+                console.log(`Page ${pageNum} text extraction completed`);
               } catch (pageError: any) {
-                console.error(`第${pageNum}页提取失败:`, pageError);
-                fullText += `\n--- 第${pageNum}页 ---\n[页面内容提取失败: ${pageError.message}]\n`;
+                console.error(`Page ${pageNum} extraction failed:`, pageError);
+                fullText += `\n--- Page ${pageNum} ---\n[Page content extraction failed: ${pageError.message}]\n`;
               }
             }
 
             const result = {
-              title: document.title || 'PDF文档',
+              title: document.title || 'PDF Document',
               page_url: pdfUrl,
-              page_content: fullText.trim() || '未能提取到PDF文本内容',
+              page_content: fullText.trim() || 'Failed to extract PDF text content',
               total_pages: numPages,
               extracted_pages: maxPages,
               content_type: 'pdf'
             };
 
-            console.log('PDF内容提取完成:', {
+            console.log('PDF content extraction completed:', {
               totalPages: numPages,
               extractedPages: maxPages,
               contentLength: fullText.length
@@ -302,11 +302,11 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
             resolve(result);
 
           } catch (error: any) {
-            console.error('PDF处理过程中发生错误:', error);
+            console.error('Error occurred during PDF processing:', error);
             resolve({
-              title: document.title || 'PDF文档',
+              title: document.title || 'PDF Document',
               page_url: window.location.href,
-              page_content: `PDF内容提取失败: ${error.message}`,
+              page_content: `PDF content extraction failed: ${error.message}`,
               error: true,
               content_type: 'pdf'
             });
@@ -314,11 +314,11 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
         });
       }, []);
     } catch (error: any) {
-      console.error('PDF内容提取失败:', error);
+      console.error('PDF content extraction failed:', error);
       return {
-        title: this.detailView.webContents.getTitle() || 'PDF文档',
+        title: this.detailView.webContents.getTitle() || 'PDF Document',
         page_url: this.detailView.webContents.getURL(),
-        page_content: `PDF内容提取失败: ${error.message}`,
+        page_content: `PDF content extraction failed: ${error.message}`,
         error: true,
         content_type: 'pdf'
       };

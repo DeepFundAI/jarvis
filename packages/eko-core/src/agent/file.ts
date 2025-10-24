@@ -16,7 +16,12 @@ export default abstract class BaseFileAgent extends Agent {
   ) {
     const _tools_ = [] as Tool[];
     const prompt = work_path
-      ? `Your default working path is: ${work_path}`
+      ? `Your working directory is: ${work_path}
+- When viewing file lists and outputting file paths, always include the working directory
+- Output file names must be in English
+- At the end, only summarize task completion without listing file paths or verifying if output files or addresses exist
+- For data-related content, combine with visualization tools for display
+- For visualizations, generate charts first before page generation to minimize repetitive work`
       : "";
     super({
       name: AGENT_NAME,
@@ -26,7 +31,11 @@ export default abstract class BaseFileAgent extends Agent {
       mcpClient: mcpClient,
       planDescription:
         planDescription ||
-        "File operation agent, handling file-related tasks such as creating, finding, reading, modifying files, etc, only text file writing is supported.",
+      `File operation agent, handles file-related tasks such as creating, finding, reading, modifying files, etc. Only supports text file output
+- Output file names must be in English
+- When users request poster or summary file output, only output txt or html files, no need to verify existence or accessibility at the end
+- For data-related content, combine with visualization tools for display
+- For visualizations, generate charts first before page generation to minimize repetitive work`,
     });
     let init_tools = this.buildInitTools();
     if (ext_tools && ext_tools.length > 0) {

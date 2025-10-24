@@ -65,10 +65,10 @@ export default class FileAgent extends BaseFileAgent {
     } else {
       await fs.writeFile(filePath, content, "utf-8");
     }
-    // 根据运行环境选择合适的预览地址
+    // Select appropriate preview URL based on runtime environment
     const previewUrl = app.isPackaged
-      ? `client://${fileName}`                          // 生产环境使用自定义协议
-      : `http://localhost:5173/static/${fileName}`;     // 开发环境使用本地服务
+      ? `client://${fileName}`                          // Production environment uses custom protocol
+      : `http://localhost:5173/static/${fileName}`;     // Development environment uses local service
 
     this.detailView.webContents.send('file-updated', 'preview', previewUrl);
   }
