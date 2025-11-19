@@ -6,10 +6,12 @@ import { BrowserView, WebContentsView } from "electron";
 export default class BrowserAgent extends BaseBrowserLabelsAgent {
 
   private detailView: WebContentsView;
+  private customPrompt?: string;
 
-  constructor(detailView: WebContentsView, mcpClient?: any) {
+  constructor(detailView: WebContentsView, mcpClient?: any, customPrompt?: string) {
     super(['default'], [], mcpClient);
     this.detailView = detailView;
+    this.customPrompt = customPrompt;
   }
 
   protected async double_screenshots(
@@ -116,6 +118,14 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
   //     throw new Error(`Failed to get video URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
   //   }
   // }
+
+  // Override extSysPrompt to support custom prompt
+  protected async extSysPrompt(
+    agentContext: AgentContext,
+    tools: Tool[]
+  ): Promise<string> {
+    return this.customPrompt || "";
+  }
 
   // Override extract_page_content method to support PDF
   protected async extract_page_content(agentContext: AgentContext): Promise<any> {

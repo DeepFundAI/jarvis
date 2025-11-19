@@ -2,15 +2,26 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { glob } from 'glob';
 import { AgentContext, BaseFileAgent } from "@jarvis-agent/core";
+import { Tool } from "@jarvis-agent/core/types";
 import { WebContentsView, app } from "electron";
 
 export default class FileAgent extends BaseFileAgent {
 
   private detailView: WebContentsView;
+  private customPrompt?: string;
 
-  constructor(detailView: WebContentsView, work_path?: string, mcpClient?: any) {
+  constructor(detailView: WebContentsView, work_path?: string, mcpClient?: any, customPrompt?: string) {
     super(work_path, ['default'], [], mcpClient);
     this.detailView = detailView;
+    this.customPrompt = customPrompt;
+  }
+
+  // Override extSysPrompt to support custom prompt
+  protected async extSysPrompt(
+    agentContext: AgentContext,
+    tools: Tool[]
+  ): Promise<string> {
+    return this.customPrompt || "";
   }
 
   protected async file_list(
@@ -55,7 +66,7 @@ export default class FileAgent extends BaseFileAgent {
     content: string,
     append: boolean
   ): Promise<any> {
-    
+
     const directory = path.dirname(filePath);
     const fileName = path.basename(filePath);
     await fs.mkdir(directory, { recursive: true });
@@ -71,6 +82,14 @@ export default class FileAgent extends BaseFileAgent {
       : `http://localhost:5173/static/${fileName}`;     // Development environment uses local service
 
     this.detailView.webContents.send('file-updated', 'preview', previewUrl);
+
+    // Return file information for attachment collection
+    return {
+      filePath,
+      fileName,
+      previewUrl,
+      size: content.length
+    };
   }
 
   protected async file_str_replace(

@@ -11,6 +11,7 @@ import {
   ForeachTaskTool,
   WatchTriggerTool,
   VariableStorageTool,
+  HumanInteractTool,
 } from "../tools";
 import {
   Tool,
@@ -328,6 +329,7 @@ export class Agent {
     if (hasWatch) {
       tools.push(new WatchTriggerTool());
     }
+    tools.push(new HumanInteractTool());
     let toolNames = this.tools.map((tool) => tool.name);
     return tools.filter((tool) => toolNames.indexOf(tool.name) == -1);
   }
