@@ -18,8 +18,9 @@ export default abstract class BaseFileAgent extends Agent {
     const prompt = work_path
       ? `Your working directory is: ${work_path}
 - When viewing file lists and outputting file paths, always include the working directory
+- When outputting files, there is no need to verify if the working path exists; the working path will be automatically created when writing files
 - Output file names must be in English
-- At the end, only summarize task completion without listing file paths or verifying if output files or addresses exist
+- IMPORTANT: In your final summary, describe ONLY what was accomplished. NEVER include file paths, file names, or file locations. Do not verify or mention file existence
 - For data-related content, combine with visualization tools for display
 - For visualizations, generate charts first before page generation to minimize repetitive work`
       : "";
