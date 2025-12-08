@@ -70,16 +70,25 @@ export default class FileAgent extends BaseFileAgent {
     const directory = path.dirname(filePath);
     const fileName = path.basename(filePath);
     await fs.mkdir(directory, { recursive: true });
-    // this.mainView.webContents.loadURL(`http://localhost:5173/static/${fileName}`);
+
     if (append) {
       await fs.appendFile(filePath, content, "utf-8");
     } else {
       await fs.writeFile(filePath, content, "utf-8");
     }
+
+    // Extract relative path from static directory for preview URL
+    // e.g., /path/to/static/{taskId}/file.html -> {taskId}/file.html
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    const staticIndex = normalizedPath.lastIndexOf('/static/');
+    const relativePath = staticIndex !== -1
+      ? normalizedPath.substring(staticIndex + 8)  // 8 = '/static/'.length
+      : fileName;
+
     // Select appropriate preview URL based on runtime environment
     const previewUrl = app.isPackaged
-      ? `client://${fileName}`                          // Production environment uses custom protocol
-      : `http://localhost:5173/static/${fileName}`;     // Development environment uses local service
+      ? `client://${relativePath}`                          // Production environment uses custom protocol
+      : `http://localhost:5173/static/${relativePath}`;     // Development environment uses local service
 
     this.detailView.webContents.send('file-updated', 'preview', previewUrl);
 
