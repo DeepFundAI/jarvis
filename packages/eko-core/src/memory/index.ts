@@ -85,8 +85,13 @@ async function doCompressAgentMessages(
   tools: LanguageModelV2FunctionTool[]
 ) {
   const ekoConfig = agentContext.context.config;
-  const rlm = new RetryLanguageModel(ekoConfig.llms, ekoConfig.compressLlms);
-  rlm.setContext(agentContext);
+  const rlm = new RetryLanguageModel(
+    ekoConfig.llms,
+    ekoConfig.compressLlms,
+    ekoConfig.globalConfig?.streamFirstTimeout,
+    ekoConfig.globalConfig?.streamTokenTimeout,
+    agentContext
+  );
   // extract used tool
   const usedTools = extractUsedTool(messages, tools);
   const snapshotTool = new TaskSnapshotTool();

@@ -14,9 +14,11 @@ type GlobalConfig = {
   parallelToolCalls: boolean;
   expertMode: boolean;
   expertModeTodoLoopNum: number;
+  streamFirstTimeout: number; // Stream first response timeout (ms)
+  streamTokenTimeout: number; // Stream token interval timeout (ms)
 }
 
-const config: GlobalConfig = {
+const defaultConfig: GlobalConfig = {
   name: "Eko",
   platform: "mac",
   maxReactNum: 500,
@@ -32,6 +34,22 @@ const config: GlobalConfig = {
   parallelToolCalls: true,
   expertMode: false,
   expertModeTodoLoopNum: 10,
+  streamFirstTimeout: 30_000,
+  streamTokenTimeout: 180_000,
 };
+
+let config: GlobalConfig = { ...defaultConfig };
+
+export function mergeGlobalConfig(userConfig?: Partial<GlobalConfig>): void {
+  if (userConfig) {
+    config = { ...defaultConfig, ...userConfig };
+  } else {
+    config = { ...defaultConfig };
+  }
+}
+
+export function getGlobalConfig(): GlobalConfig {
+  return config;
+}
 
 export default config;

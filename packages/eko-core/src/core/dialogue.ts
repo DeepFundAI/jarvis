@@ -88,7 +88,12 @@ export class EkoDialogue {
       params.messageId = params.messageId ?? this.memory.genMessageId();
       await this.addUserMessage(params.user, params.messageId);
     }
-    const rlm = new RetryLanguageModel(this.config.llms, this.config.chatLlms);
+    const rlm = new RetryLanguageModel(
+      this.config.llms,
+      this.config.chatLlms,
+      this.config.globalConfig?.streamFirstTimeout,
+      this.config.globalConfig?.streamTokenTimeout
+    );
     for (let i = 0; i < 15; i++) {
       const messages = this.memory.buildMessages();
       const chatTools = [...this.buildInnerTools(params), ...this.tools];

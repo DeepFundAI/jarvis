@@ -7,6 +7,7 @@ import {
   Workflow,
   WorkflowAgent,
 } from "../types";
+import { mergeGlobalConfig } from "../config";
 
 export default class Context {
   taskId: string;
@@ -32,6 +33,7 @@ export default class Context {
     this.chain = chain;
     this.variables = new Map();
     this.controller = new AbortController();
+    mergeGlobalConfig(config.globalConfig);
   }
 
   async checkAborted(noCheckPause?: boolean): Promise<void> {

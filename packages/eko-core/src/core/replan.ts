@@ -22,9 +22,11 @@ export async function checkTaskReplan(
     }
     const rlm = new RetryLanguageModel(
       context.config.llms,
-      context.config.planLlms
+      context.config.planLlms,
+      context.config.globalConfig?.streamFirstTimeout,
+      context.config.globalConfig?.streamTokenTimeout,
+      agentContext
     );
-    rlm.setContext(agentContext);
     const agentExecution = getAgentExecutionPrompt(agentContext);
     const prompt = `# Task Execution Status
 ${agentExecution}

@@ -86,8 +86,13 @@ export class Planner {
     retryNum: number = 0
   ): Promise<Workflow> {
     const config = this.context.config;
-    const rlm = new RetryLanguageModel(config.llms, config.planLlms);
-    rlm.setContext(this.context);
+    const rlm = new RetryLanguageModel(
+      config.llms,
+      config.planLlms,
+      config.globalConfig?.streamFirstTimeout,
+      config.globalConfig?.streamTokenTimeout,
+      this.context
+    );
     const request: LLMRequest = {
       maxTokens: 8192,
       temperature: 0.7,

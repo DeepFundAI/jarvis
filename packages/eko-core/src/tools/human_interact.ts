@@ -146,9 +146,11 @@ request_help: Request assistance from the user; for instance, when an operation 
       };
       let rlm = new RetryLanguageModel(
         agentContext.context.config.llms,
-        agentContext.agent.Llms
+        agentContext.agent.Llms,
+        agentContext.context.config.globalConfig?.streamFirstTimeout,
+        agentContext.context.config.globalConfig?.streamTokenTimeout,
+        agentContext
       );
-      rlm.setContext(agentContext);
       let image = toImage(imageResult.imageBase64);
       let request: LLMRequest = {
         messages: [
