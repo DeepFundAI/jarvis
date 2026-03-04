@@ -1,17 +1,37 @@
 import { LanguageModelV2Prompt, Tool } from "@jarvis-agent/core/types";
 import { AgentContext, BaseBrowserLabelsAgent } from "@jarvis-agent/core";
-import { BrowserView, WebContentsView } from "electron";
-// import { store } from "../../electron/main/utils/store"; // External dependency - should be injected
+import { WebContentsView } from "electron";
+
+/**
+ * Tab manager interface for multi-tab browser support
+ */
+export interface ITabManager {
+  getAllTabs(): Array<{ tabId: number; url: string; title: string }>;
+  getActiveView(): WebContentsView | null;
+  getActiveTabId(): number;
+  switchTab(tabId: number): boolean;
+}
 
 export default class BrowserAgent extends BaseBrowserLabelsAgent {
 
-  private detailView: WebContentsView;
+  private tabManager: ITabManager;
   private customPrompt?: string;
 
-  constructor(detailView: WebContentsView, mcpClient?: any, customPrompt?: string) {
+  constructor(tabManager: ITabManager, mcpClient?: any, customPrompt?: string) {
     super(['default'], [], mcpClient);
-    this.detailView = detailView;
+    this.tabManager = tabManager;
     this.customPrompt = customPrompt;
+  }
+
+  /**
+   * Get current active view
+   */
+  private get detailView(): WebContentsView {
+    const view = this.tabManager.getActiveView();
+    if (!view) {
+      throw new Error('No active tab available');
+    }
+    return view;
   }
 
   protected async double_screenshots(
@@ -75,22 +95,16 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
   protected async get_all_tabs(
     agentContext: AgentContext
   ): Promise<Array<{ tabId: number; url: string; title: string }>> {
-    const url = this.detailView.webContents.getURL();
-    const title = this.detailView.webContents.getTitle();
-    return [
-      {
-        tabId: 0,
-        url,
-        title,
-      },
-    ];
+    return this.tabManager.getAllTabs();
   }
 
   protected async switch_tab(
     agentContext: AgentContext,
     tabId: number
   ): Promise<{ tabId: number; url: string; title: string }> {
-    return (await this.get_all_tabs(agentContext))[0];
+    this.tabManager.switchTab(tabId);
+    const tabs = this.tabManager.getAllTabs();
+    return tabs.find(t => t.tabId === tabId) || tabs[0];
   }
 
   protected async go_back(agentContext: AgentContext): Promise<void> {
@@ -100,31 +114,27 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
     }
   }
 
-  // NOTE: This method requires external store dependency - commented out for npm package
-  // protected async get_xiaohongshu_video_url(xiaohongshuUrl: string): Promise<string> {
-  //   try {
-  //     // Get video URL from Electron store
-  //     const videoUrlMap = store.get('videoUrlMap', {});
-  //     const videoInfo = videoUrlMap[xiaohongshuUrl];
-
-  //     if (videoInfo && videoInfo.platform === 'xiaohongshu' && videoInfo.videoUrl) {
-  //       console.log('Retrieved Xiaohongshu video URL from store:', videoInfo.videoUrl);
-  //       return videoInfo.videoUrl;
-  //     } else {
-  //       throw new Error('Video URL not found for this Xiaohongshu page, please open the page in detailView first');
-  //     }
-  //   } catch (error) {
-  //     console.error('Failed to get Xiaohongshu video URL:', error);
-  //     throw new Error(`Failed to get video URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  //   }
-  // }
-
-  // Override extSysPrompt to support custom prompt
+  // Override extSysPrompt to support custom prompt and tab awareness
   protected async extSysPrompt(
     agentContext: AgentContext,
     tools: Tool[]
   ): Promise<string> {
-    return this.customPrompt || "";
+    const tabAwarenessPrompt = `
+
+## Multi-Tab Browser Guidelines
+
+This browser supports multiple tabs. Use \`get_all_tabs\` to see current tab list.
+
+Important:
+1. **Tab Awareness**: Call \`get_all_tabs\` periodically to know current tab state, especially after actions that may open new tabs.
+
+2. **External Links**: When clicking links that open new tabs (target="_blank"), \`go_back\` will NOT work - you're in a different tab. Use \`get_all_tabs\` to find the original tab, then \`switch_tab\` to return.
+
+3. **Tab Cleanup**: Close unused tabs proactively to keep workspace clean. Don't let tabs accumulate.
+`;
+
+    // customPrompt first, tab awareness at the end
+    return (this.customPrompt || "") + tabAwarenessPrompt;
   }
 
   // Override extract_page_content method to support PDF

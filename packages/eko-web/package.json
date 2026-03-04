@@ -39,7 +39,7 @@
     "url": "git+https://github.com/yourusername/jarvis-agent.git"
   },
   "dependencies": {
-    "@jarvis-agent/core": "^0.1.2",
+    "@jarvis-agent/core": "^0.1.6",
     "html2canvas": "^1.4.1"
   },
   "devDependencies": {
