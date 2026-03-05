@@ -9,8 +9,8 @@ export const AGENT_NAME = "Computer";
 
 export default abstract class BaseComputerAgent extends Agent {
 
-  constructor(llms?: string[], ext_tools?: Tool[], mcpClient?: IMcpClient, keyboardKeys?: string[]) {
-    const _tools_ = [] as Tool[];
+  constructor(llms?: string[], ext_tools?: Tool[], mcpClients?: IMcpClient | IMcpClient[], keyboardKeys?: string[]) {
+    const initTools = [] as Tool[];
     super({
       name: AGENT_NAME,
       description: `You are a computer operation agent, who interacts with the computer using mouse and keyboard, completing specified tasks step by step based on the given tasks and screenshots. After each of your operations, you will receive the latest computer screenshot to evaluate the task execution status.
@@ -18,9 +18,9 @@ This is a computer GUI interface, observe the execution through screenshots, and
 * COMPUTER OPERATIONS:
   - You can operate the application using shortcuts.
   - If stuck, try alternative approaches`,
-      tools: _tools_,
+      tools: initTools,
       llms: llms,
-      mcpClient: mcpClient,
+      mcpClients: Array.isArray(mcpClients) ? mcpClients : (mcpClients ? [mcpClients] : []),
       planDescription: "Computer operation agent, interact with the computer using the mouse and keyboard."
     });
     if (!keyboardKeys) {
@@ -50,11 +50,11 @@ This is a computer GUI interface, observe the execution through screenshots, and
         ]
       }
     }
-    let init_tools = this.buildInitTools(keyboardKeys);
+    let builtTools = this.buildInitTools(keyboardKeys);
     if (ext_tools && ext_tools.length > 0) {
-      init_tools = mergeTools(init_tools, ext_tools);
+      builtTools = mergeTools(builtTools, ext_tools);
     }
-    init_tools.forEach((tool) => _tools_.push(tool));
+    builtTools.forEach((tool) => initTools.push(tool));
   }
 
   protected abstract screenshot(agentContext: AgentContext): Promise<{

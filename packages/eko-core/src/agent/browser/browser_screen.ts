@@ -5,7 +5,7 @@ import { Tool, ToolResult, IMcpClient } from "../../types";
 import { mergeTools, sleep, toImage } from "../../common/utils";
 
 export default abstract class BaseBrowserScreenAgent extends BaseBrowserAgent {
-  constructor(llms?: string[], ext_tools?: Tool[], mcpClient?: IMcpClient) {
+  constructor(llms?: string[], ext_tools?: Tool[], mcpClients?: IMcpClient | IMcpClient[]) {
     const description = `You are a browser operation agent, use a mouse and keyboard to interact with a browser.
 * This is a browser GUI interface, observe the webpage execution through screenshots, and specify action sequences to complete designated tasks.
 * For the first visit, please call the \`navigate_to\` or \`current_page\` tool first. After that, each of your actions will return a screenshot of the page.
@@ -17,21 +17,21 @@ export default abstract class BaseBrowserScreenAgent extends BaseBrowserAgent {
   - Wait for elements to load
   - Scroll pages and handle infinite scroll
   - YOU CAN DO ANYTHING ON THE BROWSER - including clicking on elements, filling forms, submitting data, etc.`;
-    const _tools_ = [] as Tool[];
+    const initTools = [] as Tool[];
     super({
       name: AGENT_NAME,
       description: description,
-      tools: _tools_,
+      tools: initTools,
       llms: llms,
-      mcpClient: mcpClient,
+      mcpClients: Array.isArray(mcpClients) ? mcpClients : (mcpClients ? [mcpClients] : []),
       planDescription:
         "Browser operation agent, interact with the browser using the mouse and keyboard.",
     });
-    let init_tools = this.buildInitTools();
+    let builtTools = this.buildInitTools();
     if (ext_tools && ext_tools.length > 0) {
-      init_tools = mergeTools(init_tools, ext_tools);
+      builtTools = mergeTools(builtTools, ext_tools);
     }
-    init_tools.forEach((tool) => _tools_.push(tool));
+    builtTools.forEach((tool) => initTools.push(tool));
   }
 
   protected abstract typing(

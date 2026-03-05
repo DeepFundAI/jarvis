@@ -2,7 +2,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { glob } from 'glob';
 import { AgentContext, BaseFileAgent } from "@jarvis-agent/core";
-import { Tool } from "@jarvis-agent/core/types";
+import { Tool, IMcpClient } from "@jarvis-agent/core/types";
 import { WebContentsView, app } from "electron";
 
 export default class FileAgent extends BaseFileAgent {
@@ -10,8 +10,8 @@ export default class FileAgent extends BaseFileAgent {
   private detailView: WebContentsView;
   private customPrompt?: string;
 
-  constructor(detailView: WebContentsView, work_path?: string, mcpClient?: any, customPrompt?: string) {
-    super(work_path, ['default'], [], mcpClient);
+  constructor(detailView: WebContentsView, work_path?: string, mcpClients?: IMcpClient | IMcpClient[], customPrompt?: string) {
+    super(work_path, ['default'], [], mcpClients);
     this.detailView = detailView;
     this.customPrompt = customPrompt;
   }

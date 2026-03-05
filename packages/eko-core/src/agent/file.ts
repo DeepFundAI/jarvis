@@ -11,10 +11,10 @@ export default abstract class BaseFileAgent extends Agent {
     work_path?: string,
     llms?: string[],
     ext_tools?: Tool[],
-    mcpClient?: IMcpClient,
+    mcpClients?: IMcpClient | IMcpClient[],
     planDescription?: string
   ) {
-    const _tools_ = [] as Tool[];
+    const initTools = [] as Tool[];
     const prompt = work_path
       ? `Your working directory is: ${work_path}
 - When viewing file lists and outputting file paths, always include the working directory
@@ -27,9 +27,9 @@ export default abstract class BaseFileAgent extends Agent {
     super({
       name: AGENT_NAME,
       description: `You are a file agent, handling file-related tasks such as creating, finding, reading, modifying files, etc.${prompt}`,
-      tools: _tools_,
+      tools: initTools,
       llms: llms,
-      mcpClient: mcpClient,
+      mcpClients: Array.isArray(mcpClients) ? mcpClients : (mcpClients ? [mcpClients] : []),
       planDescription:
         planDescription ||
       `File operation agent, handles file-related tasks such as creating, finding, reading, modifying files, etc. Only supports text file output
@@ -38,11 +38,11 @@ export default abstract class BaseFileAgent extends Agent {
 - For data-related content, combine with visualization tools for display
 - For visualizations, generate charts first before page generation to minimize repetitive work`,
     });
-    let init_tools = this.buildInitTools();
+    let builtTools = this.buildInitTools();
     if (ext_tools && ext_tools.length > 0) {
-      init_tools = mergeTools(init_tools, ext_tools);
+      builtTools = mergeTools(builtTools, ext_tools);
     }
-    init_tools.forEach((tool) => _tools_.push(tool));
+    builtTools.forEach((tool) => initTools.push(tool));
   }
 
   protected abstract file_list(

@@ -48,6 +48,7 @@ export type AgentParams = {
   tools: Tool[];
   llms?: string[];
   mcpClient?: IMcpClient;
+  mcpClients?: IMcpClient[];
   planDescription?: string;
   requestHandler?: (request: LLMRequest) => void;
 };
@@ -57,7 +58,7 @@ export class Agent {
   protected description: string;
   protected tools: Tool[] = [];
   protected llms?: string[];
-  protected mcpClient?: IMcpClient;
+  protected mcpClients: IMcpClient[];
   protected planDescription?: string;
   protected requestHandler?: (request: LLMRequest) => void;
   protected callback?: StreamCallback & HumanCallback;
@@ -68,32 +69,38 @@ export class Agent {
     this.description = params.description;
     this.tools = params.tools;
     this.llms = params.llms;
-    this.mcpClient = params.mcpClient;
+    this.mcpClients = params.mcpClients || (params.mcpClient ? [params.mcpClient] : []);
     this.planDescription = params.planDescription;
     this.requestHandler = params.requestHandler;
   }
 
   public async run(context: Context, agentChain: AgentChain): Promise<string> {
-    const mcpClient = this.mcpClient || context.config.defaultMcpClient;
+    const mcpClients = this.mcpClients.length > 0
+      ? this.mcpClients
+      : (context.config.defaultMcpClient ? [context.config.defaultMcpClient] : []);
     const agentContext = new AgentContext(context, this, agentChain);
     try {
       this.agentContext = agentContext;
-      mcpClient &&
-        !mcpClient.isConnected() &&
-        (await mcpClient.connect(context.controller.signal));
+      for (const client of mcpClients) {
+        if (!client.isConnected()) {
+          await client.connect(context.controller.signal);
+        }
+      }
       return await this.runWithContext(
         agentContext,
-        mcpClient,
+        mcpClients,
         config.maxReactNum
       );
     } finally {
-      mcpClient && (await mcpClient.close());
+      for (const client of mcpClients) {
+        await client.close();
+      }
     }
   }
 
   public async runWithContext(
     agentContext: AgentContext,
-    mcpClient?: IMcpClient,
+    mcpClients?: IMcpClient | IMcpClient[],
     maxReactNum: number = 100,
     historyMessages: LanguageModelV2Prompt = []
   ): Promise<string> {
@@ -126,25 +133,28 @@ export class Agent {
       context.config.globalConfig?.streamTokenTimeout,
       agentContext
     );
+    const resolvedMcpClients = Array.isArray(mcpClients)
+      ? mcpClients
+      : (mcpClients ? [mcpClients] : []);
     let agentTools = tools;
     while (loopNum < maxReactNum) {
       await context.checkAborted();
-      if (mcpClient) {
+      if (resolvedMcpClients.length > 0) {
         const controlMcp = await this.controlMcpTools(
           agentContext,
           messages,
           loopNum
         );
         if (controlMcp.mcpTools) {
-          const mcpTools = await this.listTools(
+          const mcpTools = await this.listMcpTools(
             context,
-            mcpClient,
+            resolvedMcpClients,
             agentNode,
             controlMcp.mcpParams
           );
           const usedTools = memory.extractUsedTool(messages, agentTools);
-          const _agentTools = mergeTools(tools, usedTools);
-          agentTools = mergeTools(_agentTools, mcpTools);
+          const mergedTools = mergeTools(tools, usedTools);
+          agentTools = mergeTools(mergedTools, mcpTools);
         }
       }
       await this.handleMessages(agentContext, messages, tools);
@@ -376,40 +386,39 @@ export class Agent {
     return "";
   }
 
-  private async listTools(
+  private async listMcpTools(
     context: Context,
-    mcpClient: IMcpClient,
+    clients: IMcpClient[],
     agentNode?: WorkflowAgent,
     mcpParams?: Record<string, unknown>
   ): Promise<Tool[]> {
-    try {
-      if (!mcpClient.isConnected()) {
-        await mcpClient.connect(context.controller.signal);
+    const allTools: Tool[] = [];
+    for (const client of clients) {
+      try {
+        if (!client.isConnected()) {
+          await client.connect(context.controller.signal);
+        }
+        const list = await client.listTools(
+          {
+            taskId: context.taskId,
+            nodeId: agentNode?.id,
+            environment: config.platform,
+            agent_name: agentNode?.name || this.name,
+            params: {},
+            prompt: agentNode?.task || context.chain.taskPrompt,
+            ...(mcpParams || {}),
+          },
+          context.controller.signal
+        );
+        for (const toolSchema of list) {
+          const execute = this.toolExecuter(client, toolSchema.name);
+          allTools.push(new McpTool(new ToolWrapper(toolSchema, execute)));
+        }
+      } catch (e) {
+        Log.error("Mcp listTools error", e);
       }
-      let list = await mcpClient.listTools(
-        {
-          taskId: context.taskId,
-          nodeId: agentNode?.id,
-          environment: config.platform,
-          agent_name: agentNode?.name || this.name,
-          params: {},
-          prompt: agentNode?.task || context.chain.taskPrompt,
-          ...(mcpParams || {}),
-        },
-        context.controller.signal
-      );
-      let mcpTools: Tool[] = [];
-      for (let i = 0; i < list.length; i++) {
-        let toolSchema: ToolSchema = list[i];
-        let execute = this.toolExecuter(mcpClient, toolSchema.name);
-        let toolWrapper = new ToolWrapper(toolSchema, execute);
-        mcpTools.push(new McpTool(toolWrapper));
-      }
-      return mcpTools;
-    } catch (e) {
-      Log.error("Mcp listTools error", e);
-      return [];
     }
+    return allTools;
   }
 
   protected async controlMcpTools(
@@ -471,9 +480,9 @@ export class Agent {
   }
 
   public async loadTools(context: Context): Promise<Tool[]> {
-    if (this.mcpClient) {
-      let mcpTools = await this.listTools(context, this.mcpClient);
-      if (mcpTools && mcpTools.length > 0) {
+    if (this.mcpClients.length > 0) {
+      const mcpTools = await this.listMcpTools(context, this.mcpClients);
+      if (mcpTools.length > 0) {
         return mergeTools(this.tools, mcpTools);
       }
     }
@@ -519,8 +528,12 @@ export class Agent {
     return this.planDescription;
   }
 
-  get McpClient() {
-    return this.mcpClient;
+  get McpClients(): IMcpClient[] {
+    return this.mcpClients;
+  }
+
+  get McpClient(): IMcpClient | undefined {
+    return this.mcpClients[0];
   }
 
   get AgentContext(): AgentContext | undefined {

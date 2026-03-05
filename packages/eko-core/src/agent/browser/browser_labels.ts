@@ -11,7 +11,7 @@ import { Tool, ToolResult, IMcpClient } from "../../types";
 import { mergeTools, sleep, toImage } from "../../common/utils";
 
 export default abstract class BaseBrowserLabelsAgent extends BaseBrowserAgent {
-  constructor(llms?: string[], ext_tools?: Tool[], mcpClient?: IMcpClient) {
+  constructor(llms?: string[], ext_tools?: Tool[], mcpClients?: IMcpClient | IMcpClient[]) {
     let description = `You are a browser operation agent, use structured commands to interact with the browser.
 * This is a browser GUI interface where you need to analyze webpages by taking screenshot and page element structures, and specify action sequences to complete designated tasks.
 * For your first visit, please start by calling either the \`navigate_to\` or \`current_page\` tool. After each action you perform, I will provide you with updated information about the current state, including page screenshots and structured element data that has been specially processed for easier analysis.
@@ -46,21 +46,21 @@ export default abstract class BaseBrowserLabelsAgent extends BaseBrowserAgent {
    - When filling out a form, fields that are not dependent on each other should be filled simultaneously
    - Avoid parallel processing for dependent operations, such as those that need to wait for page loading, DOM changes, redirects, subsequent operations that depend on the results of previous operations, or operations that may interfere with each other and affect the same page elements. In these cases, please do not use parallelization.`;
     }
-    const _tools_ = [] as Tool[];
+    const initTools = [] as Tool[];
     super({
       name: AGENT_NAME,
       description: description,
-      tools: _tools_,
+      tools: initTools,
       llms: llms,
-      mcpClient: mcpClient,
+      mcpClients: Array.isArray(mcpClients) ? mcpClients : (mcpClients ? [mcpClients] : []),
       planDescription:
         "Browser operation agent, interact with the browser using the mouse and keyboard.",
     });
-    let init_tools = this.buildInitTools();
+    let builtTools = this.buildInitTools();
     if (ext_tools && ext_tools.length > 0) {
-      init_tools = mergeTools(init_tools, ext_tools);
+      builtTools = mergeTools(builtTools, ext_tools);
     }
-    init_tools.forEach((tool) => _tools_.push(tool));
+    builtTools.forEach((tool) => initTools.push(tool));
   }
 
   protected async input_text(

@@ -1,4 +1,4 @@
-import { LanguageModelV2Prompt, Tool } from "@jarvis-agent/core/types";
+import { LanguageModelV2Prompt, Tool, IMcpClient } from "@jarvis-agent/core/types";
 import { AgentContext, BaseBrowserLabelsAgent } from "@jarvis-agent/core";
 import { WebContentsView } from "electron";
 
@@ -17,8 +17,8 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
   private tabManager: ITabManager;
   private customPrompt?: string;
 
-  constructor(tabManager: ITabManager, mcpClient?: any, customPrompt?: string) {
-    super(['default'], [], mcpClient);
+  constructor(tabManager: ITabManager, mcpClients?: IMcpClient | IMcpClient[], customPrompt?: string) {
+    super(['default'], [], mcpClients);
     this.tabManager = tabManager;
     this.customPrompt = customPrompt;
   }

@@ -9,26 +9,26 @@ export default abstract class BaseShellAgent extends Agent {
   constructor(
     llms?: string[],
     ext_tools?: Tool[],
-    mcpClient?: IMcpClient,
+    mcpClients?: IMcpClient | IMcpClient[],
     planDescription?: string
   ) {
-    const _tools_ = [] as Tool[];
+    const initTools = [] as Tool[];
     super({
       name: AGENT_NAME,
       description: `Run commands in a bash shell,
 * You must first call create_session to create a new session when using it for the first time.
 * Please execute delete commands with caution, and never perform dangerous operations like \`rm -rf /\`.
 * Please avoid commands that may produce a very large amount of output.`,
-      tools: _tools_,
+      tools: initTools,
       llms: llms,
-      mcpClient: mcpClient,
+      mcpClients: Array.isArray(mcpClients) ? mcpClients : (mcpClients ? [mcpClients] : []),
       planDescription: planDescription || "Shell command agent, use to execute shell commands.",
     });
-    let init_tools = this.buildInitTools();
+    let builtTools = this.buildInitTools();
     if (ext_tools && ext_tools.length > 0) {
-      init_tools = mergeTools(init_tools, ext_tools);
+      builtTools = mergeTools(builtTools, ext_tools);
     }
-    init_tools.forEach((tool) => _tools_.push(tool));
+    builtTools.forEach((tool) => initTools.push(tool));
   }
 
   protected abstract create_session(
