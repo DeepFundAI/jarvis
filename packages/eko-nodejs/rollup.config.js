@@ -9,23 +9,34 @@ export default [
     input: 'src/index.ts',
     output: [
       {
-        file: 'dist/index.cjs.js',
+        file: 'dist/index.cjs',
         format: 'cjs',
-        sourcemap: true
+        sourcemap: true,
+        exports: 'named',
+        interop: 'auto'
       }
     ],
-    external: ["dotenv", "@jarvis-agent/core", "playwright"],
+    external: ["dotenv", "@jarvis-agent/core", "canvas", "playwright", "playwright-extra", "puppeteer-extra-plugin-stealth"],
     plugins: [
       json(),
       commonjs(),
       resolve({
         preferBuiltins: true,
       }),
-      typescript(),
+      typescript({
+        declaration: true,
+        declarationMap: true,
+        compilerOptions: {
+          declaration: true,
+          declarationMap: true,
+          moduleResolution: 'Bundler',
+        }
+      }),
       copy({
         targets: [
           { src: '../../README.md', dest: './' }
-        ]
+        ],
+        hook: 'writeBundle'
       })
     ]
   },
@@ -38,7 +49,7 @@ export default [
         sourcemap: true
       }
     ],
-    external: ["dotenv", "@jarvis-agent/core", "playwright"],
+    external: ["dotenv", "@jarvis-agent/core", "canvas", "playwright"],
     plugins: [
       json(),
       commonjs(),
@@ -46,11 +57,9 @@ export default [
         browser: true,
         preferBuiltins: true,
       }),
-      typescript(),
-      copy({
-        targets: [
-          { src: '../../README.md', dest: './' }
-        ]
+      typescript({
+        declaration: false,
+        declarationMap: false,
       })
     ]
   }

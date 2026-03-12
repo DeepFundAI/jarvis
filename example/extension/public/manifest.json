@@ -1,7 +1,7 @@
 {
   "name": "Eko agent",
   "description": "Eko Agent Extension",
-  "version": "3.0",
+  "version": "4.0",
   "manifest_version": 3,
   "background": {
     "type": "module",
@@ -35,7 +35,8 @@
     "storage",
     "scripting",
     "alarms",
-    "notifications"
+    "notifications",
+    "downloads"
   ],
   "host_permissions": ["<all_urls>"],
   "web_accessible_resources": [

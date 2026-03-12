@@ -1,6 +1,6 @@
 {
-  "name": "@eko-ai/eko-web-example",
-  "version": "3.0.0",
+  "name": "@jarvis-agent/web-example",
+  "version": "4.0.0",
   "scripts": {
     "build": "react-scripts build",
     "start": "react-scripts start",
@@ -17,8 +17,8 @@
     "react-dom": "^19.1.0",
     "react-scripts": "^5.0.1",
     "@react-login-page/base": "^1.0.4",
-    "@jarvis-agent/core": "file:../../packages/eko-core",
-    "@jarvis-agent/web": "file:../../packages/eko-web"
+    "@jarvis-agent/core": "workspace:*",
+    "@jarvis-agent/web": "workspace:*"
   },
   "browserslist": {
     "production": [

@@ -1,21 +1,27 @@
-import { AgentContext, BaseBrowserLabelsAgent } from "@jarvis-agent/core";
-import {
-  chromium,
-  Browser,
-  Page,
-  ElementHandle,
-  BrowserContext,
-} from "playwright";
-import { getDefaultChromeUserDataDir } from "./utils";
+import { chromium } from "playwright-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+import { AgentContext, BaseBrowserLabelsAgent, Log } from "@jarvis-agent/core";
+import { Page, Browser, ElementHandle, BrowserContext } from "playwright";
 
-export default class BrowserAgent extends BaseBrowserLabelsAgent {
+var tabId = 1000;
+
+type PageInfo = {
+  tabId: number;
+  lastAccessed: number;
+};
+
+export class BrowserAgent extends BaseBrowserLabelsAgent {
   private cdpWsEndpoint?: string;
   private userDataDir?: string;
   private options?: Record<string, any>;
+  private cookies?: Array<any>;
   protected browser: Browser | null = null;
-  private browser_context: BrowserContext | null = null;
-  private current_page: Page | null = null;
+  private browserContext: BrowserContext | null = null;
+  private activePage: Page | null = null;
   private headless: boolean = false;
+
+  private pageMap = new Map<Page, PageInfo>();
+  protected lastSwitchedPage: Page | null = null;
 
   public setHeadless(headless: boolean) {
     this.headless = headless;
@@ -25,13 +31,23 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
     this.cdpWsEndpoint = cdpWsEndpoint;
   }
 
-  public initUserDataDir(userDataDir?: string): string | undefined {
-    if (userDataDir) {
-      this.userDataDir = userDataDir;
-    } else {
-      this.userDataDir = getDefaultChromeUserDataDir(true);
-    }
+  public initUserDataDir(userDataDir: string): string | undefined {
+    this.userDataDir = userDataDir;
     return this.userDataDir;
+  }
+
+  public setCookies(
+    cookies: Array<{
+      name: string;
+      value: string;
+      url?: string;
+      domain?: string;
+      path?: string;
+      expires?: number;
+      httpOnly?: boolean;
+    }>
+  ) {
+    this.cookies = cookies;
   }
 
   public setOptions(options?: Record<string, any>) {
@@ -41,13 +57,14 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
   protected async screenshot(
     agentContext: AgentContext
   ): Promise<{ imageBase64: string; imageType: "image/jpeg" | "image/png" }> {
-    let page = await this.currentPage();
-    let screenshotBuffer = await page.screenshot({
+    const page = await this.currentPage();
+    const screenshotBuffer = await page.screenshot({
       fullPage: false,
       type: "jpeg",
       quality: 60,
+      animations: "disabled",
     });
-    let base64 = screenshotBuffer.toString("base64");
+    const base64 = screenshotBuffer.toString("base64");
     return {
       imageType: "image/jpeg",
       imageBase64: base64,
@@ -62,7 +79,8 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
     title?: string;
     tabId?: number;
   }> {
-    let page = await this.open_url(agentContext, url);
+    const page = await this.open_url(agentContext, url);
+    this.lastSwitchedPage = page;
     await this.sleep(200);
     return {
       url: page.url(),
@@ -70,20 +88,50 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
     };
   }
 
-  protected async get_all_tabs(
-    agentContext: AgentContext
-  ): Promise<Array<{ tabId: number; url: string; title: string }>> {
-    if (!this.browser_context) {
+  public async loadTabs() {
+    return await this.get_all_tabs(undefined);
+  }
+
+  public getPageMap() {
+    return this.pageMap;
+  }
+
+  protected async get_all_tabs(agentContext?: AgentContext): Promise<
+    Array<{
+      tabId: number;
+      url: string;
+      title: string;
+      lastAccessed?: number;
+      active: boolean;
+    }>
+  > {
+    if (!this.browserContext) {
       return [];
     }
-    let result: Array<{ tabId: number; url: string; title: string }> = [];
-    const pages = await this.browser_context.pages();
+    const result: Array<{
+      tabId: number;
+      url: string;
+      title: string;
+      lastAccessed?: number;
+      active: boolean;
+    }> = [];
+    const pages = this.browserContext.pages();
     for (let i = 0; i < pages.length; i++) {
       let page = pages[i];
+      let pageInfo = this.pageMap.get(page);
+      if (!pageInfo) {
+        pageInfo = {
+          tabId: tabId++,
+          lastAccessed: Date.now(),
+        };
+        this.pageMap.set(page, pageInfo);
+      }
       result.push({
-        tabId: i,
+        tabId: pageInfo.tabId,
         url: page.url(),
         title: await page.title(),
+        lastAccessed: pageInfo.lastAccessed,
+        active: page === this.activePage,
       });
     }
     return result;
@@ -93,19 +141,25 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
     agentContext: AgentContext,
     tabId: number
   ): Promise<{ tabId: number; url: string; title: string }> {
-    if (!this.browser_context) {
+    if (!this.browserContext) {
       throw new Error("tabId does not exist: " + tabId);
     }
-    const pages = await this.browser_context.pages();
-    const page = pages[tabId];
-    if (!page) {
+    let switchPage: Page | null = null;
+    this.pageMap.forEach((pageInfo, page) => {
+      if (pageInfo.tabId === tabId) {
+        switchPage = page;
+        return;
+      }
+    });
+    if (!switchPage) {
       throw new Error("tabId does not exist: " + tabId);
     }
-    this.current_page = page;
+    this.activePage = switchPage;
+    this.lastSwitchedPage = switchPage;
     return {
       tabId: tabId,
-      url: page.url(),
-      title: await page.title(),
+      url: (switchPage as Page).url(),
+      title: await (switchPage as Page).title(),
     };
   }
 
@@ -116,7 +170,7 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
     enter: boolean
   ): Promise<any> {
     try {
-      let elementHandle = await this.get_element(index, true);
+      const elementHandle = await this.get_element(index, true);
       await elementHandle.fill("");
       await elementHandle.fill(text);
       if (enter) {
@@ -135,11 +189,21 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
     button: "left" | "right" | "middle"
   ): Promise<any> {
     try {
-      let elementHandle = await this.get_element(index, true);
+      const elementHandle = await this.get_element(index, true);
+      const box = await elementHandle.boundingBox();
+      if (box) {
+        const page = await this.currentPage();
+        page.mouse.move(
+          box.x + box.width / 2 + (Math.random() * 10 - 5),
+          box.y + box.height / 2 + (Math.random() * 10 - 5),
+          { steps: Math.floor(Math.random() * 5) + 3 }
+        );
+      }
       await elementHandle.click({
         button,
         clickCount: num_clicks,
-        force: true,
+        force: false,
+        delay: Math.random() * 50 + 20,
       });
     } catch (e) {
       await super.click_element(agentContext, index, num_clicks, button);
@@ -151,7 +215,7 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
     index: number
   ): Promise<void> {
     try {
-      let elementHandle = await this.get_element(index, true);
+      const elementHandle = await this.get_element(index, true);
       elementHandle.hover({ force: true });
     } catch (e) {
       await super.hover_to_element(agentContext, index);
@@ -163,7 +227,7 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
     func: (...args: any[]) => void,
     args: any[]
   ): Promise<any> {
-    let page = await this.currentPage();
+    const page = await this.currentPage();
     return await page.evaluate(func, ...args);
   }
 
@@ -171,30 +235,30 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
     agentContext: AgentContext,
     url: string
   ): Promise<Page> {
-    let browser_context = await this.getBrowserContext();
+    const browser_context = await this.getBrowserContext();
     const page: Page = await browser_context.newPage();
-    // await page.setViewportSize({ width: 1920, height: 1080 });
-    await page.setViewportSize({ width: 1536, height: 864 });
     try {
+      await this.autoLoadCookies(url);
+      await this.autoLoadLocalStorage(page, url);
       await page.goto(url, {
-        waitUntil: "networkidle",
+        waitUntil: "domcontentloaded",
         timeout: 10000,
       });
-      await page.waitForLoadState("load", { timeout: 8000 });
+      await page.waitForLoadState("networkidle", { timeout: 5000 });
     } catch (e) {
       if ((e + "").indexOf("Timeout") == -1) {
         throw e;
       }
     }
-    this.current_page = page;
+    this.activePage = page;
     return page;
   }
 
   protected async currentPage(): Promise<Page> {
-    if (this.current_page == null) {
+    if (this.activePage == null) {
       throw new Error("There is no page, please call navigate_to first");
     }
-    let page = this.current_page as Page;
+    const page = this.activePage as Page;
     try {
       await page.waitForLoadState("domcontentloaded", { timeout: 10000 });
     } catch (e) {}
@@ -205,7 +269,7 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
     index: number,
     findInput?: boolean
   ): Promise<ElementHandle> {
-    let page = await this.currentPage();
+    const page = await this.currentPage();
     return await page.evaluateHandle(
       (params: any) => {
         let element = (window as any).get_highlight_element(params.index);
@@ -227,103 +291,201 @@ export default class BrowserAgent extends BaseBrowserLabelsAgent {
     );
   }
 
+  protected async go_back(agentContext: AgentContext): Promise<void> {
+    try {
+      await this.execute_script(
+        agentContext,
+        async () => {
+          await (window as any).navigation.back().finished;
+        },
+        []
+      );
+      await this.sleep(100);
+    } catch (e: any) {
+      if (e?.name == "InvalidStateError" && this.lastSwitchedPage) {
+        this.activePage && (await this.activePage.close());
+        this.activePage = this.lastSwitchedPage;
+        this.lastSwitchedPage = null;
+      } else {
+        throw new Error("Cannot go back");
+      }
+    }
+  }
+
   private sleep(time: number): Promise<void> {
     return new Promise((resolve) => setTimeout(() => resolve(), time));
   }
 
-  protected async getBrowserContext() {
-    if (!this.browser_context) {
-      this.current_page = null;
-      this.browser_context = null;
+  public async getBrowserContext(): Promise<BrowserContext> {
+    if (!this.browserContext) {
+      this.activePage = null;
+      this.browserContext = null;
+      const viewport = this.options?.viewport || { width: 1536, height: 864 };
       if (this.cdpWsEndpoint) {
-        this.browser = await chromium.connectOverCDP(
+        this.browser = (await chromium.connectOverCDP(
           this.cdpWsEndpoint,
           this.options
-        );
-        this.browser_context = await this.browser.newContext();
+        )) as unknown as Browser;
+        this.browserContext = await this.browser.newContext({
+          userAgent: this.getUserAgent(),
+          viewport: viewport,
+        });
       } else if (this.userDataDir) {
-        this.browser_context = await chromium.launchPersistentContext(
+        this.browserContext = (await chromium.launchPersistentContext(
           this.userDataDir,
           {
             headless: this.headless,
-            // channel: 'chrome',
-            args: [
-              "--no-sandbox",
-              "--remote-allow-origins=*",
-              "--disable-dev-shm-usage",
-              "--disable-popup-blocking",
-              "--enable-automation",
-              "--ignore-ssl-errors",
-              "--ignore-certificate-errors",
-              "--ignore-certificate-errors-spki-list",
-              "--disable-blink-features=AutomationControlled",
-            ],
+            channel: "chrome",
+            args: this.getChromiumArgs(),
+            viewport: viewport,
             ...this.options,
           }
-        );
+        )) as unknown as BrowserContext;
       } else {
-        this.browser = await chromium.launch({
+        this.browser = (await chromium.launch({
           headless: this.headless,
-          args: [
-            "--no-sandbox",
-            "--remote-allow-origins=*",
-            "--disable-dev-shm-usage",
-            "--disable-popup-blocking",
-            "--enable-automation",
-            "--ignore-ssl-errors",
-            "--ignore-certificate-errors",
-            "--ignore-certificate-errors-spki-list",
-            "--disable-blink-features=AutomationControlled",
-          ],
+          args: this.getChromiumArgs(),
           ...this.options,
+        })) as unknown as Browser;
+        this.browserContext = await this.browser.newContext({
+          userAgent: this.getUserAgent(),
+          viewport: viewport,
         });
-        this.browser_context = await this.browser.newContext();
       }
       // Anti-crawling detection website:
       // https://bot.sannysoft.com/
-      let init_script = await this.initScript();
-      this.browser_context.addInitScript(init_script);
+      // https://www.browserscan.net/
+      chromium.use(StealthPlugin());
+      const init_script = await this.initScript();
+      if (init_script.content || init_script.path) {
+        this.browserContext.addInitScript(init_script);
+      }
+      this.browserContext.on("page", async (page) => {
+        this.activePage = page;
+        this.pageMap.set(page, {
+          tabId: tabId++,
+          lastAccessed: Date.now(),
+        });
+        page.on("framenavigated", async (frame) => {
+          if (frame === page.mainFrame()) {
+            const url = frame.url();
+            if (url.startsWith("http")) {
+              await this.autoLoadCookies(url);
+              await this.autoLoadLocalStorage(page, url);
+            }
+          }
+        });
+        page.on("close", () => {
+          this.pageMap.delete(page);
+        });
+      });
     }
-    return this.browser_context;
+    if (this.cookies) {
+      this.browserContext?.addCookies(this.cookies);
+    }
+    return this.browserContext;
+  }
+
+  private async autoLoadCookies(url: string): Promise<void> {
+    try {
+      const cookies = await this.loadCookiesWithUrl(url);
+      if (cookies && cookies.length > 0) {
+        await this.browserContext?.clearCookies();
+        await this.browserContext?.addCookies(cookies);
+      }
+    } catch (e) {
+      Log.error("Failed to auto load cookies: " + url, e);
+    }
+  }
+
+  private async autoLoadLocalStorage(page: Page, url: string): Promise<void> {
+    try {
+      const localStorageData = await this.loadLocalStorageWithUrl(url);
+      await page.addInitScript((storage: Record<string, string>) => {
+        try {
+          for (const [key, value] of Object.entries(storage)) {
+            localStorage.setItem(key, value);
+          }
+        } catch (e) {
+          Log.error("Failed to inject localStorage: " + url, e);
+        }
+      }, localStorageData);
+    } catch (e) {
+      Log.error("Failed to auto load localStorage: " + url, e);
+    }
+  }
+
+  protected async loadCookiesWithUrl(url: string): Promise<
+    Array<{
+      name: string;
+      value: string;
+      url?: string;
+      domain?: string;
+      path?: string;
+      expires?: number;
+      httpOnly?: boolean;
+      secure?: boolean;
+      sameSite?: "Strict" | "Lax" | "None";
+      partitionKey?: string;
+    }>
+  > {
+    return [];
+  }
+
+  protected async loadLocalStorageWithUrl(
+    url: string
+  ): Promise<Record<string, string>> {
+    return {};
+  }
+
+  protected getChromiumArgs(): string[] {
+    return [
+      "--no-sandbox",
+      "--remote-allow-origins=*",
+      "--disable-dev-shm-usage",
+      "--disable-popup-blocking",
+      "--ignore-ssl-errors",
+      "--ignore-certificate-errors",
+      "--ignore-certificate-errors-spki-list",
+      "--disable-blink-features=AutomationControlled",
+      "--disable-infobars",
+      "--disable-notifications",
+      "--disable-web-security",
+      "--disable-features=IsolateOrigins,site-per-process",
+    ];
+  }
+
+  protected getUserAgent(): string | undefined {
+    // const userAgents = [
+    //   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    //   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+    //   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    //   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+    // ];
+    // return userAgents[Math.floor(Math.random() * userAgents.length)];
+    return undefined;
   }
 
   protected async initScript(): Promise<{ path?: string; content?: string }> {
-    return {
-      content: `
-      // Webdriver property
-			Object.defineProperty(navigator, 'webdriver', {
-				get: () => undefined
-			});
+    return {};
+  }
 
-			// Languages
-			Object.defineProperty(navigator, 'languages', {
-				get: () => ['en-US']
-			});
+  public async getBrowser(): Promise<Browser | null> {
+    return this.browser;
+  }
 
-			// Plugins
-			Object.defineProperty(navigator, 'plugins', {
-				get: () => [{name:"1"}, {name:"2"}, {name:"3"}, {name:"4"}, {name:"5"}]
-			});
+  public async getActivePage(): Promise<Page | null> {
+    return this.activePage;
+  }
 
-			// Chrome runtime
-			window.chrome = { runtime: {} };
-
-			// Permissions
-			const originalQuery = window.navigator.permissions.query;
-			window.navigator.permissions.query = (parameters) => (
-				parameters.name === 'notifications' ?
-					Promise.resolve({ state: Notification.permission }) :
-					originalQuery(parameters)
-			);
-			(function () {
-				const originalAttachShadow = Element.prototype.attachShadow;
-				Element.prototype.attachShadow = function attachShadow(options) {
-					return originalAttachShadow.call(this, { ...options, mode: "open" });
-				};
-			})();
-      `,
-    };
+  public async close(): Promise<void> {
+    if (this.browserContext) {
+      await this.browserContext.close();
+    }
+    if (this.browser) {
+      await this.browser.close();
+    }
   }
 }
 
-export { BrowserAgent };
+export default BrowserAgent;

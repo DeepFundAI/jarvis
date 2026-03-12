@@ -1,27 +1,20 @@
 import dotenv from "dotenv";
-import { BrowserAgent, FileAgent } from "@jarvis-agent/nodejs";
-import { Eko, Agent, Log, LLMs, StreamCallbackMessage } from "@jarvis-agent/core";
+import FileAgent from "./file-agent";
+import LocalCookiesBrowserAgent from "./browser";
+import { BrowserAgent } from "@jarvis-agent/nodejs";
+import { Eko, Log, LLMs, Agent, AgentStreamMessage } from "@jarvis-agent/core";
 
 dotenv.config();
 
 const openaiBaseURL = process.env.OPENAI_BASE_URL;
 const openaiApiKey = process.env.OPENAI_API_KEY;
-const claudeBaseURL = process.env.ANTHROPIC_BASE_URL;
-const claudeApiKey = process.env.ANTHROPIC_API_KEY;
+const openaiModel = process.env.OPENAI_MODEL;
 
 const llms: LLMs = {
   default: {
-    provider: "anthropic",
-    model: "claude-sonnet-4-20250514",
-    apiKey: claudeApiKey || "",
-    config: {
-      baseURL: claudeBaseURL,
-    },
-  },
-  openai: {
-    provider: "openai",
-    model: "gpt-5-mini",
-    apiKey: openaiApiKey || "",
+    provider: "openai-compatible",
+    model: openaiModel as string,
+    apiKey: openaiApiKey as string,
     config: {
       baseURL: openaiBaseURL,
     },
@@ -29,7 +22,7 @@ const llms: LLMs = {
 };
 
 const callback = {
-  onMessage: async (message: StreamCallbackMessage) => {
+  onMessage: async (message: AgentStreamMessage) => {
     if (message.type == "workflow" && !message.streamDone) {
       return;
     }
@@ -43,14 +36,30 @@ const callback = {
   },
 };
 
+function testBrowserLoginStatus() {
+  const browser = new LocalCookiesBrowserAgent();
+  const url = "https://github.com";
+  browser.testOpenUrl(url);
+}
+
 async function run() {
   Log.setLevel(1);
-  const agents: Agent[] = [new BrowserAgent(), new FileAgent()];
+  // Use local browser cookie login state, will read local Chrome's cookie and localStorage information
+  // If a password dialog pops up, please enter your computer password and click "Always Allow"
+  const agents: Agent[] = [
+    // new BrowserAgent(),
+    new LocalCookiesBrowserAgent(),
+    new FileAgent(),
+  ];
   const eko = new Eko({ llms, agents, callback });
-  const result = await eko.run(
-    "Search for the latest news about Musk, summarize and save to the desktop as Musk.md"
-  );
-  console.log("result: ", result.result);
+  try {
+    const result = await eko.run(
+      "Open GitHub, search for the FellouAI/eko repository, click star, and summarize the eko introduction information, then save it to the fellou-eko.md file on the desktop"
+    );
+    console.log("Task result: \n", result.result);
+  } finally {
+    process.exit(0);
+  }
 }
 
 run().catch((e) => {

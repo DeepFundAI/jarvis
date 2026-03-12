@@ -1,30 +1,14 @@
-type GlobalConfig = {
-  name: string; // product name
-  platform: "windows" | "mac" | "linux";
-  maxReactNum: number;
-  maxTokens: number;
-  maxRetryNum: number;
-  agentParallel: boolean;
-  compressThreshold: number; // Dialogue context compression threshold (message count)
-  compressTokensThreshold: number; // Dialogue context compression threshold (token count)
-  largeTextLength: number;
-  fileTextMaxLength: number;
-  maxDialogueImgFileNum: number;
-  toolResultMultimodal: boolean;
-  parallelToolCalls: boolean;
-  expertMode: boolean;
-  expertModeTodoLoopNum: number;
-  streamFirstTimeout: number; // Stream first response timeout (ms)
-  streamTokenTimeout: number; // Stream token interval timeout (ms)
-}
+import { Config } from "../types";
 
-const defaultConfig: GlobalConfig = {
+const defaultConfig: Config = {
   name: "Eko",
+  mode: "normal",
   platform: "mac",
   maxReactNum: 500,
-  maxTokens: 16000,
+  maxOutputTokens: 16000,
   maxRetryNum: 3,
   agentParallel: false,
+  workflowConfirm: false,
   compressThreshold: 80,
   compressTokensThreshold: 80000,
   largeTextLength: 8000,
@@ -32,15 +16,22 @@ const defaultConfig: GlobalConfig = {
   maxDialogueImgFileNum: 1,
   toolResultMultimodal: true,
   parallelToolCalls: true,
-  expertMode: false,
+  markImageMode: "draw",
   expertModeTodoLoopNum: 10,
   streamFirstTimeout: 30_000,
   streamTokenTimeout: 180_000,
+  memoryConfig: {
+    maxMessageNum: 15,
+    maxInputTokens: 64000,
+    enableCompression: true,
+    compressionThreshold: 10,
+    compressionMaxLength: 6000,
+  },
 };
 
-let config: GlobalConfig = { ...defaultConfig };
+let config: Config = { ...defaultConfig };
 
-export function mergeGlobalConfig(userConfig?: Partial<GlobalConfig>): void {
+export function mergeGlobalConfig(userConfig?: Partial<Config>): void {
   if (userConfig) {
     config = { ...defaultConfig, ...userConfig };
   } else {
@@ -48,7 +39,7 @@ export function mergeGlobalConfig(userConfig?: Partial<GlobalConfig>): void {
   }
 }
 
-export function getGlobalConfig(): GlobalConfig {
+export function getGlobalConfig(): Config {
   return config;
 }
 

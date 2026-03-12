@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { defaultMessageProviderOptions } from "../../src/agent/llm";
+import { defaultMessageProviderOptions } from "../../src/agent/agent-llm";
 import { LanguageModelV2, LanguageModelV2StreamPart } from "@ai-sdk/provider";
 
 dotenv.config();
@@ -17,7 +17,7 @@ export async function testClaudePrompt() {
   const client: LanguageModelV2 = createAnthropic({
     apiKey: apiKey,
     baseURL: baseURL,
-  }).languageModel("claude-sonnet-4-20250514");
+  }).languageModel("claude-sonnet-4-5-20250929");
 
   let result = await client.doGenerate({
     prompt: [{ role: "user", content: [{ type: "text", text: "Hello" }] }],
@@ -35,7 +35,7 @@ export async function testClaudeStream() {
   const client: LanguageModelV2 = createAnthropic({
     apiKey: apiKey,
     baseURL: baseURL,
-  }).languageModel("claude-sonnet-4-20250514");
+  }).languageModel("claude-sonnet-4-5-20250929");
 
   let result = await client.doStream({
     prompt: [{ role: "user", content: [{ type: "text", text: "Hello" }] }],
@@ -66,7 +66,7 @@ export async function testToolsPrompt() {
   const client: LanguageModelV2 = createAnthropic({
     apiKey: apiKey,
     baseURL: baseURL,
-  }).languageModel("claude-sonnet-4-20250514");
+  }).languageModel("claude-sonnet-4-5-20250929");
 
   const result = await client.doStream({
     tools: [

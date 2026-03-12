@@ -1,21 +1,21 @@
-import { Eko, LLMs, StreamCallbackMessage } from "@jarvis-agent/core";
+import { Eko, LLMs, AgentStreamMessage } from "@jarvis-agent/core";
 import { BrowserAgent } from "@jarvis-agent/web";
 
 export async function auto_test_case() {
   // Initialize LLM provider
   const llms: LLMs = {
     default: {
-      provider: "anthropic",
-      model: "claude-sonnet-4-20250514",
-      apiKey: "your_api_key",
+      provider: "openai-compatible",
+      model: "anthropic/claude-sonnet-4.5",
+      apiKey: "your_openrouter_key",
       config: {
-        baseURL: "https://api.anthropic.com/v1",
+        baseURL: "https://openrouter.ai/api/v1",
       },
     },
   };
 
   const callback = {
-    onMessage: async (message: StreamCallbackMessage) => {
+    onMessage: async (message: AgentStreamMessage) => {
       if (message.type == "workflow" && !message.streamDone) {
         return;
       }

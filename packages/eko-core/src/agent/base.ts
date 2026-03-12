@@ -4,25 +4,24 @@ import * as memory from "../memory";
 import { RetryLanguageModel } from "../llm";
 import { mergeTools } from "../common/utils";
 import { ToolWrapper } from "../tools/wrapper";
-import { AgentChain, ToolChain } from "../core/chain";
-import Context, { AgentContext } from "../core/context";
+import { AgentChain, ToolChain } from "./chain";
 import {
   McpTool,
   ForeachTaskTool,
   WatchTriggerTool,
-  VariableStorageTool,
   HumanInteractTool,
+  VariableStorageTool,
 } from "../tools";
 import {
   Tool,
+  ToolSchema,
   IMcpClient,
   LLMRequest,
   ToolResult,
-  ToolSchema,
   ToolExecuter,
   WorkflowAgent,
   HumanCallback,
-  StreamCallback,
+  AgentStreamCallback,
 } from "../types";
 import {
   LanguageModelV2Prompt,
@@ -37,9 +36,11 @@ import {
   callAgentLLM,
   convertToolResult,
   defaultMessageProviderOptions,
-} from "./llm";
-import { doTaskResultCheck } from "../tools/task_result_check";
-import { doTodoListManager } from "../tools/todo_list_manager";
+} from "./agent-llm";
+import { convertAssistantContent } from "../llm/react";
+import TaskContext, { AgentContext } from "./agent-context";
+import { doTaskResultCheck } from "../tools/task-result-check";
+import { doTodoListManager } from "../tools/todo-list-manager";
 import { getAgentSystemPrompt, getAgentUserPrompt } from "../prompt/agent";
 
 export type AgentParams = {
@@ -61,7 +62,7 @@ export class Agent {
   protected mcpClients: IMcpClient[];
   protected planDescription?: string;
   protected requestHandler?: (request: LLMRequest) => void;
-  protected callback?: StreamCallback & HumanCallback;
+  protected callback?: AgentStreamCallback & HumanCallback;
   protected agentContext?: AgentContext;
 
   constructor(params: AgentParams) {
@@ -74,7 +75,7 @@ export class Agent {
     this.requestHandler = params.requestHandler;
   }
 
-  public async run(context: Context, agentChain: AgentChain): Promise<string> {
+  public async run(context: TaskContext, agentChain: AgentChain): Promise<string> {
     const mcpClients = this.mcpClients.length > 0
       ? this.mcpClients
       : (context.config.defaultMcpClient ? [context.config.defaultMcpClient] : []);
@@ -109,7 +110,10 @@ export class Agent {
     this.agentContext = agentContext;
     const context = agentContext.context;
     const agentNode = agentContext.agentChain.agent;
-    const tools = [...this.tools, ...this.system_auto_tools(agentNode)];
+    const tools = [
+      ...this.tools,
+      ...this.system_auto_tools(agentNode, agentContext),
+    ];
     const systemPrompt = await this.buildSystemPrompt(agentContext, tools);
     const userPrompt = await this.buildUserPrompt(agentContext, tools);
     const messages: LanguageModelV2Prompt = [
@@ -122,7 +126,6 @@ export class Agent {
       {
         role: "user",
         content: userPrompt,
-        providerOptions: defaultMessageProviderOptions(),
       },
     ];
     agentContext.messages = messages;
@@ -166,7 +169,6 @@ export class Agent {
         llm_tools,
         false,
         undefined,
-        0,
         this.callback,
         this.requestHandler
       );
@@ -182,12 +184,15 @@ export class Agent {
       );
       loopNum++;
       if (!finalResult) {
-        if (config.expertMode && loopNum % config.expertModeTodoLoopNum == 0) {
+        if (
+          config.mode == "expert" &&
+          loopNum % config.expertModeTodoLoopNum == 0
+        ) {
           await doTodoListManager(agentContext, rlm, messages, llm_tools);
         }
         continue;
       }
-      if (config.expertMode && checkNum == 0) {
+      if (config.mode == "expert" && checkNum == 0) {
         checkNum++;
         const { completionStatus } = await doTaskResultCheck(
           agentContext,
@@ -215,7 +220,7 @@ export class Agent {
     // results = memory.removeDuplicateToolUse(results);
     messages.push({
       role: "assistant",
-      content: results,
+      content: convertAssistantContent(results),
     });
     if (results.length == 0) {
       return null;
@@ -228,7 +233,8 @@ export class Agent {
       toolCalls.length > 1 &&
       this.canParallelToolCalls(toolCalls) &&
       toolCalls.every(
-        (s) => agentTools.find((t) => t.name == s.toolName)?.supportParallelCalls
+        (s) =>
+          agentTools.find((t) => t.name == s.toolName)?.supportParallelCalls
       )
     ) {
       const results = await Promise.all(
@@ -312,11 +318,13 @@ export class Agent {
     if (callback) {
       await callback.onMessage(
         {
+          streamType: "agent",
+          chatId: context.chatId,
           taskId: context.taskId,
           agentName: agentContext.agent.Name,
           nodeId: agentContext.agentChain.agent.id,
           type: "tool_result",
-          toolId: result.toolCallId,
+          toolCallId: result.toolCallId,
           toolName: result.toolName,
           params: result.input || {},
           toolResult: toolResult,
@@ -327,25 +335,42 @@ export class Agent {
     return convertToolResult(result, toolResult, user_messages);
   }
 
-  protected system_auto_tools(agentNode: WorkflowAgent): Tool[] {
-    let tools: Tool[] = [];
-    let agentNodeXml = agentNode.xml;
-    let hasVariable =
+  protected system_auto_tools(
+    agentNode: WorkflowAgent,
+    agentContext: AgentContext
+  ): Tool[] {
+    const tools: Tool[] = [];
+    const agentNodeXml = agentNode.xml;
+    const hasVariable =
       agentNodeXml.indexOf("input=") > -1 ||
       agentNodeXml.indexOf("output=") > -1;
     if (hasVariable) {
       tools.push(new VariableStorageTool());
+    } else {
+      const dependentVariables =
+        agentContext.context.variables.get("dependentVariables");
+      if (dependentVariables && dependentVariables.length > 0) {
+        tools.push(new VariableStorageTool());
+      }
     }
-    let hasForeach = agentNodeXml.indexOf("</forEach>") > -1;
+    const hasForeach = agentNodeXml.indexOf("</forEach>") > -1;
     if (hasForeach) {
       tools.push(new ForeachTaskTool());
     }
-    let hasWatch = agentNodeXml.indexOf("</watch>") > -1;
+    const hasWatch = agentNodeXml.indexOf("</watch>") > -1;
     if (hasWatch) {
       tools.push(new WatchTriggerTool());
     }
-    tools.push(new HumanInteractTool());
-    let toolNames = this.tools.map((tool) => tool.name);
+    const callback = this.callback || agentContext.context.config.callback;
+    if (
+      callback?.onHumanConfirm ||
+      callback?.onHumanInput ||
+      callback?.onHumanSelect ||
+      callback?.onHumanHelp
+    ) {
+      tools.push(new HumanInteractTool());
+    }
+    const toolNames = this.tools.map((tool) => tool.name);
     return tools.filter((tool) => toolNames.indexOf(tool.name) == -1);
   }
 
@@ -387,7 +412,7 @@ export class Agent {
   }
 
   private async listMcpTools(
-    context: Context,
+    context: TaskContext,
     clients: IMcpClient[],
     agentNode?: WorkflowAgent,
     mcpParams?: Record<string, unknown>
@@ -479,7 +504,7 @@ export class Agent {
     };
   }
 
-  public async loadTools(context: Context): Promise<Tool[]> {
+  public async loadTools(context: TaskContext): Promise<Tool[]> {
     if (this.mcpClients.length > 0) {
       const mcpTools = await this.listMcpTools(context, this.mcpClients);
       if (mcpTools.length > 0) {
