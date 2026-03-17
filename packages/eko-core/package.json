@@ -1,6 +1,6 @@
 {
   "name": "@jarvis-agent/core",
-  "version": "0.2.2",
+  "version": "0.2.5",
   "description": "A production-ready JavaScript AI Agent framework for creating reliable agents across browser and Node.js environments.",
   "main": "dist/index.cjs.js",
   "module": "dist/index.esm.js",
@@ -49,7 +49,7 @@
     "url": "git+https://github.com/yourusername/jarvis-agent.git"
   },
   "dependencies": {
-    "@ai-sdk/deepseek": "^1.0.10",
+    "@ai-sdk/deepseek": "^1.0.35",
     "@ai-sdk/provider": "^2.0.0",
     "@ai-sdk/amazon-bedrock": "^3.0.68",
     "@ai-sdk/azure": "^2.0.87",

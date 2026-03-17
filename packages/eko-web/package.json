@@ -1,6 +1,6 @@
 {
   "name": "@jarvis-agent/web",
-  "version": "0.2.2",
+  "version": "0.2.5",
   "description": "Browser/Web environment support for Jarvis Agent framework.",
   "main": "dist/index.cjs.js",
   "module": "dist/index.esm.js",
@@ -40,7 +40,7 @@
     "url": "git+https://github.com/yourusername/jarvis-agent.git"
   },
   "dependencies": {
-    "@jarvis-agent/core": "^0.2.2",
+    "@jarvis-agent/core": "^0.2.5",
     "html2canvas": "^1.4.1"
   },
   "devDependencies": {
