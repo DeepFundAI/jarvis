@@ -96,6 +96,10 @@ export type EkoMessageAssistantPart =
       text: string;
     }
   | {
+      type: "reasoning";
+      text: string;
+    }
+  | {
       type: "tool-call";
       toolCallId: string;
       toolName: string;

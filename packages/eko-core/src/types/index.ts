@@ -76,6 +76,7 @@ export type {
   LanguageModelV2Message,
   SharedV2ProviderOptions,
   LanguageModelV2TextPart,
+  LanguageModelV2ReasoningPart,
   LanguageModelV2FilePart,
   LanguageModelV2ToolChoice,
   LanguageModelV2StreamPart,

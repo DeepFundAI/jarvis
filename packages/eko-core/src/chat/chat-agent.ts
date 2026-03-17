@@ -8,6 +8,7 @@ import {
   EkoMessageUserPart,
   ChatStreamCallback,
   LanguageModelV2TextPart,
+  LanguageModelV2ReasoningPart,
   LanguageModelV2ToolCallPart,
   LanguageModelV2ToolResultPart,
 } from "../types";
@@ -229,7 +230,7 @@ export class ChatAgent {
   protected async handleCallResult(
     messageId: string,
     chatTools: DialogueTool[],
-    results: Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart>,
+    results: Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart>,
     chatStreamCallback?: ChatStreamCallback
   ): Promise<string | null> {
     let text: string | null = null;
@@ -239,8 +240,11 @@ export class ChatAgent {
     }
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
-      if (result.type == "text") {
+      if (result.type === "text") {
         text = result.text;
+        continue;
+      }
+      if (result.type === "reasoning") {
         continue;
       }
       let toolResult: ToolResult;

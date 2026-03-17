@@ -7,6 +7,7 @@ import {
   LanguageModelV2Content,
   SharedV2ProviderOptions,
   LanguageModelV2TextPart,
+  LanguageModelV2ReasoningPart,
   SharedV2ProviderMetadata,
   LanguageModelV2ToolChoice,
   LanguageModelV2StreamPart,
@@ -197,7 +198,7 @@ export type ReActToolCallCallback = (
 
 export type ReActLoopControl = (
   request: LLMRequest,
-  assistantParts: Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart>,
+  assistantParts: Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart>,
   loopNum: number
 ) => Promise<boolean>;
 

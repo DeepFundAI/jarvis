@@ -7,6 +7,7 @@ import {
   LLMStreamCallback,
   ReActToolCallCallback,
   LanguageModelV2TextPart,
+  LanguageModelV2ReasoningPart,
   LanguageModelV2ToolCallPart,
   LanguageModelV2ToolResultOutput,
 } from "../types";
@@ -31,7 +32,7 @@ export async function callWithReAct(
   errorHandler?: LLMErrorHandler,
   finishHandler?: LLMFinishHandler,
   loopControl?: ReActLoopControl
-): Promise<Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart>>;
+): Promise<Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart>>;
 
 export async function callWithReAct(
   rlm: RetryLanguageModel,
@@ -41,7 +42,7 @@ export async function callWithReAct(
   errorHandler?: LLMErrorHandler,
   finishHandler?: LLMFinishHandler,
   loopControl?: ReActLoopControl
-): Promise<Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart>>;
+): Promise<Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart>>;
 
 export async function callWithReAct(
   rlm: RetryLanguageModel,
@@ -51,7 +52,7 @@ export async function callWithReAct(
   errorHandler?: LLMErrorHandler,
   finishHandler?: LLMFinishHandler,
   loopControl?: ReActLoopControl
-): Promise<Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart>>;
+): Promise<Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart>>;
 
 export async function callWithReAct(
   rlm: RetryLanguageModel,
@@ -61,7 +62,7 @@ export async function callWithReAct(
   errorHandler?: LLMErrorHandler,
   finishHandler?: LLMFinishHandler,
   loopControl?: ReActLoopControl
-): Promise<Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart>> {
+): Promise<Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart>> {
   if (!loopControl) {
     loopControl = async (request, assistantParts, loopNum) => {
       if (loopNum >= 15) {
@@ -83,9 +84,7 @@ export async function callWithReAct(
     }));
   }
   let loopNum = 0;
-  let assistantParts: Array<
-    LanguageModelV2TextPart | LanguageModelV2ToolCallPart
-  > | null = null;
+  let assistantParts: Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart> | null = null;
   while (true) {
     await streamCallback?.({
       type: "loop_start",
@@ -191,7 +190,7 @@ export async function callLLM(
   errorHandler?: LLMErrorHandler,
   finishHandler?: LLMFinishHandler,
   retryNum: number = 0
-): Promise<Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart>> {
+): Promise<Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart>> {
   let streamText = "";
   let thinkText = "";
   let toolArgsText = "";
@@ -447,12 +446,11 @@ export async function callLLM(
         await errorHandler(request, e, retryNum);
       }
       Log.warn("callLLM abort error: ", e);
-      return streamText
-        ? [
-            { type: "text", text: streamText } as LanguageModelV2TextPart,
-            ...toolParts,
-          ]
-        : toolParts;
+      const parts: Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart> = [];
+      if (thinkText) parts.push({ type: "reasoning", text: thinkText } as LanguageModelV2ReasoningPart);
+      if (streamText) parts.push({ type: "text", text: streamText } as LanguageModelV2TextPart);
+      parts.push(...toolParts);
+      return parts;
     } else {
       if (retryNum < config.maxRetryNum) {
         await sleep(200 * (retryNum + 1) * (retryNum + 1));
@@ -473,34 +471,33 @@ export async function callLLM(
   } finally {
     reader && reader.releaseLock();
   }
-  return streamText
-    ? [
-        { type: "text", text: streamText } as LanguageModelV2TextPart,
-        ...toolParts,
-      ]
-    : toolParts;
+  const resultParts: Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart> = [];
+  if (thinkText) resultParts.push({ type: "reasoning", text: thinkText } as LanguageModelV2ReasoningPart);
+  if (streamText) resultParts.push({ type: "text", text: streamText } as LanguageModelV2TextPart);
+  resultParts.push(...toolParts);
+  return resultParts;
 }
 
 export function convertAssistantContent(
-  assistantParts: Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart>
-): Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart> {
+  assistantParts: Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart>
+): Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart> {
   return assistantParts
-    .filter((part) => part.type == "text" || part.type == "tool-call")
-    .map((part) =>
-      part.type === "text"
-        ? {
-            type: "text",
-            text: part.text,
-          }
-        : {
-            type: "tool-call",
-            toolCallId: part.toolCallId,
-            toolName: part.toolName,
-            input:
-              typeof part.input == "string"
-                ? JSON.parse(part.input || "{}")
-                : part.input || {},
-            providerOptions: part.providerOptions,
-          }
-    );
+    .filter((part) => part.type === "text" || part.type === "reasoning" || part.type === "tool-call")
+    .map((part) => {
+      if (part.type === "text") {
+        return { type: "text" as const, text: part.text };
+      }
+      if (part.type === "reasoning") {
+        return { type: "reasoning" as const, text: part.text } as LanguageModelV2ReasoningPart;
+      }
+      return {
+        type: "tool-call" as const,
+        toolCallId: part.toolCallId,
+        toolName: part.toolName,
+        input: typeof part.input === "string"
+          ? JSON.parse(part.input || "{}")
+          : part.input || {},
+        providerOptions: part.providerOptions,
+      };
+    });
 }

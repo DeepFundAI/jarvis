@@ -14,6 +14,7 @@ import {
 import {
   LanguageModelV2Prompt,
   LanguageModelV2TextPart,
+  LanguageModelV2ReasoningPart,
   SharedV2ProviderOptions,
   LanguageModelV2ToolChoice,
   LanguageModelV2ToolCallPart,
@@ -195,7 +196,7 @@ export async function callAgentLLM(
   toolChoice?: LanguageModelV2ToolChoice,
   callback?: AgentStreamCallback & HumanCallback,
   requestHandler?: (request: LLMRequest) => void
-): Promise<Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart>> {
+): Promise<Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart>> {
   await agentContext.context.checkAborted();
   if (
     !noCompress &&

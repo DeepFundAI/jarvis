@@ -1,6 +1,7 @@
 import {
   LanguageModelV2Prompt,
   LanguageModelV2TextPart,
+  LanguageModelV2ReasoningPart,
   LanguageModelV2ToolCallPart,
   LanguageModelV2FunctionTool,
 } from "@ai-sdk/provider";
@@ -39,8 +40,8 @@ export function extractUsedTool<T extends Tool | LanguageModelV2FunctionTool>(
 }
 
 export function removeDuplicateToolUse(
-  results: Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart>
-): Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart> {
+  results: Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart>
+): Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart> {
   if (
     results.length <= 1 ||
     results.filter((r) => r.type == "tool-call").length <= 1

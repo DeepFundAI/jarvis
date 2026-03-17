@@ -27,6 +27,7 @@ import {
   LanguageModelV2Prompt,
   LanguageModelV2FilePart,
   LanguageModelV2TextPart,
+  LanguageModelV2ReasoningPart,
   LanguageModelV2ToolCallPart,
   LanguageModelV2ToolResultPart,
 } from "@ai-sdk/provider";
@@ -213,7 +214,7 @@ export class Agent {
     agentContext: AgentContext,
     messages: LanguageModelV2Prompt,
     agentTools: Tool[],
-    results: Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart>
+    results: Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart>
   ): Promise<string | null> {
     const user_messages: LanguageModelV2Prompt = [];
     const toolResults: LanguageModelV2ToolResultPart[] = [];
@@ -225,8 +226,8 @@ export class Agent {
     if (results.length == 0) {
       return null;
     }
-    if (results.every((s) => s.type == "text")) {
-      return results.map((s) => s.text).join("\n\n");
+    if (results.every((s) => s.type === "text" || s.type === "reasoning")) {
+      return results.filter((s) => s.type === "text").map((s) => s.text).join("\n\n");
     }
     const toolCalls = results.filter((s) => s.type == "tool-call");
     if (

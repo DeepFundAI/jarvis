@@ -10,6 +10,7 @@ import {
   LanguageModelV2Prompt,
   EkoMessageAssistantPart,
   LanguageModelV2TextPart,
+  LanguageModelV2ReasoningPart,
   LanguageModelV2ToolChoice,
   LanguageModelV2ToolCallPart,
   LanguageModelV2FunctionTool,
@@ -25,7 +26,7 @@ export async function callChatLLM(
   toolChoice?: LanguageModelV2ToolChoice,
   callback?: ChatStreamCallback,
   signal?: AbortSignal
-): Promise<Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart>> {
+): Promise<Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart>> {
   const streamCallback = callback?.chatCallback || {
     onMessage: async () => {},
   };
@@ -46,17 +47,22 @@ export async function callChatLLM(
 }
 
 export function convertAssistantToolResults(
-  results: Array<LanguageModelV2TextPart | LanguageModelV2ToolCallPart>
+  results: Array<LanguageModelV2TextPart | LanguageModelV2ReasoningPart | LanguageModelV2ToolCallPart>
 ): EkoMessageAssistantPart[] {
   return results.map((part) => {
     if (part.type == "text") {
       return {
-        type: "text",
+        type: "text" as const,
+        text: part.text,
+      };
+    } else if (part.type == "reasoning") {
+      return {
+        type: "reasoning" as const,
         text: part.text,
       };
     } else if (part.type == "tool-call") {
       return {
-        type: "tool-call",
+        type: "tool-call" as const,
         toolCallId: part.toolCallId,
         toolName: part.toolName,
         args:
