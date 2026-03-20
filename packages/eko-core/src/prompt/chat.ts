@@ -7,6 +7,7 @@ import { TOOL_NAME as webpage_qa } from "../chat/tools/webpage-qa";
 import { TOOL_NAME as web_search } from "../chat/tools/web-search";
 import { TOOL_NAME as deep_action } from "../chat/tools/deep-action";
 import { TOOL_NAME as variable_storage } from "../chat/tools/variable-storage";
+import { TOOL_NAME as activate_skill } from "../chat/tools/activate-skill-tool";
 
 const CHAT_SYSTEM_TEMPLATE = `
 You are {{name}}, it is an action-oriented assistant in the browser, a general-purpose intelligent agent running in the browser environment.
@@ -30,7 +31,19 @@ For non-chat related tasks issued by users, the following tools need to be calle
 <if ${variable_storage}Tool>
 - ${variable_storage}: This tool is used to read output variables from task nodes and write input variables to task nodes, mainly used to retrieve variable results after task execution is completed.
 </if>
+<if ${activate_skill}Tool>
+- ${activate_skill}: Activate a specialized skill for domain-specific tasks. Use when the user's request matches an available skill.
+</if>
 </tool_instructions>
+
+<if skills>
+## Available Skills
+You have access to specialized skills. Use activate_skill when the user's request matches a skill.
+When you see <use_skill name="..." /> in user messages, you MUST call activate_skill with that skill name immediately before proceeding.
+<available_skills>
+{{skills}}
+</available_skills>
+</if>
 
 <if memory>
 The assistant always focuses on the user's current question and will not allow previous conversation turns or irrelevant memory content to interfere with the response to the user's current question. Each question should be handled independently unless it explicitly builds upon prior context.
@@ -56,7 +69,8 @@ export function getChatSystemPrompt(
   tools: DialogueTool[],
   datetime: string,
   memory?: string,
-  tabs?: PageTab[]
+  tabs?: PageTab[],
+  skills?: string
 ): string {
   const systemPrompt =
     global.prompts.get(GlobalPromptKey.chat_system) || CHAT_SYSTEM_TEMPLATE;
@@ -69,6 +83,7 @@ export function getChatSystemPrompt(
     datetime: datetime,
     memory: memory || "",
     tabs: getTabsInfo(tabs),
+    skills: skills || "",
     ...toolVars,
   }).trim();
 }

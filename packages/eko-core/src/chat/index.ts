@@ -5,6 +5,7 @@ import { WebpageQaTool } from "./tools/webpage-qa";
 import AgentWrapTool from "./tools/agent-wrap-tool";
 import { DeepActionTool } from "./tools/deep-action";
 import { TaskVariableStorageTool } from "./tools/variable-storage";
+import { ActivateSkillTool } from "./tools/activate-skill-tool";
 
 export {
   ChatAgent,
@@ -14,4 +15,5 @@ export {
   WebpageQaTool,
   DeepActionTool,
   TaskVariableStorageTool,
+  ActivateSkillTool,
 };

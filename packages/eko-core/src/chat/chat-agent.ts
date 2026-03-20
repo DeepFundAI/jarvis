@@ -28,6 +28,7 @@ import DeepActionTool from "./tools/deep-action";
 import { getChatSystemPrompt } from "../prompt/chat";
 import { mergeTools, uuidv4 } from "../common/utils";
 import TaskVariableStorageTool from "./tools/variable-storage";
+import ActivateSkillTool from "./tools/activate-skill-tool";
 import { convertTools, getTool, convertToolResult } from "../agent/agent-llm";
 
 export class ChatAgent {
@@ -164,12 +165,21 @@ export class ChatAgent {
         Log.error("browser service load tabs error: ", e);
       }
     }
+    let _skills: string | undefined;
+    if (global.skillService) {
+      const skills = global.skillService.getAllMetadata().filter((s) => s.enabled);
+      if (skills.length > 0) {
+        _skills = skills.map((s) => `- ${s.name}: ${s.description}`).join("\n");
+      }
+    }
+
     const datetime = params.datetime || new Date().toLocaleString();
     const systemPrompt = getChatSystemPrompt(
       chatTools,
       datetime,
       _memory,
-      _tabs
+      _tabs,
+      _skills
     );
     this.memory.setSystemPrompt(systemPrompt);
   }
@@ -209,9 +219,15 @@ export class ChatAgent {
     }
     tools.push(new WebSearchTool(this.chatContext, params));
     tools.push(new TaskVariableStorageTool(this.chatContext, params));
-    // this.chatContext.getConfig().agents?.forEach((agent) => {
-    //   tools.push(new AgentWrapTool(this.chatContext, params, agent));
-    // });
+
+    // Add skill tool when service available and has enabled skills
+    if (global.skillService) {
+      const skills = global.skillService.getAllMetadata().filter((s) => s.enabled);
+      if (skills.length > 0) {
+        tools.push(new ActivateSkillTool());
+      }
+    }
+
     return tools;
   }
 
