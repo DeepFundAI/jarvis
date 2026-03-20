@@ -2,6 +2,7 @@ import TaskContext from "../agent/agent-context";
 import { ChatContext } from "../chat/chat-context";
 import { ChatService } from "../service/chat-service";
 import { BrowserService } from "../service/browser-service";
+import { SkillService } from "./skill.types";
 
 export interface MemoryConfig {
   maxMessageNum: number; // Maximum number of messages to keep in memory
@@ -51,4 +52,5 @@ export type Global = {
   prompts: Map<string, string>;
   chatService?: ChatService;
   browserService?: BrowserService;
+  skillService?: SkillService;
 };

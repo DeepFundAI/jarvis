@@ -64,6 +64,13 @@ export type {
 
 export type { Config, Global, MemoryConfig } from "./config.types";
 
+export type {
+  SkillMetadata,
+  SkillPackage,
+  SkillContent,
+  SkillService,
+} from "./skill.types";
+
 export { GlobalPromptKey } from "./config.types";
 
 export type { PageTab, PageContent, WebSearchResult } from "./service.types";
