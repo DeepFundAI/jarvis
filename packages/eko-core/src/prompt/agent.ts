@@ -11,6 +11,7 @@ import { TOOL_NAME as watch_trigger } from "../tools/watch-trigger";
 import { TOOL_NAME as human_interact } from "../tools/human-interact";
 import { TOOL_NAME as variable_storage } from "../tools/variable-storage";
 import { TOOL_NAME as task_node_status } from "../tools/task-node-status";
+import { TOOL_NAME as activate_skill } from "../chat/tools/activate-skill-tool";
 
 const AGENT_SYSTEM_TEMPLATE = `
 You are {{name}}, an autonomous AI agent for {{agent}} agent.
@@ -42,6 +43,14 @@ For repetitive tasks, when executing a forEach node, the \`${foreach_task}\` too
 <if ${watch_trigger}Tool>
 * watch node
 monitor changes in webpage DOM elements, when executing to the watch node, require the use of the \`${watch_trigger}\` tool.
+</if>
+<if ${activate_skill}Tool>
+* SKILLS
+You can use the \`${activate_skill}\` tool to load domain-specific skill instructions when they would help complete the current task.
+</if>
+<if skills>
+Available skills:
+{{skills}}
 </if>
 
 <if mainTask>
@@ -102,6 +111,16 @@ export function getAgentSystemPrompt(
   for (let i = 0; i < tools.length; i++) {
     toolVars[tools[i].name + "Tool"] = true;
   }
+
+  // Inject skill list when available
+  let _skills = "";
+  if (global.skillService) {
+    const skills = global.skillService.getAllMetadata().filter((s) => s.enabled);
+    if (skills.length > 0) {
+      _skills = skills.map((s) => `- ${s.name}: ${s.description}`).join("\n");
+    }
+  }
+
   let mainTask = "";
   let preTaskResult = "";
   if (context.chain.agents.length > 1) {
@@ -115,6 +134,7 @@ export function getAgentSystemPrompt(
     agent: agent.Name,
     description: agent.Description,
     extSysPrompt: extSysPrompt?.trim() || "",
+    skills: _skills,
     mainTask: mainTask,
     preTaskResult: preTaskResult.trim(),
     hasWatchNode: agentNode.xml.indexOf("</watch>") > -1,

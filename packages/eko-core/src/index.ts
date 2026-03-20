@@ -38,6 +38,7 @@ export {
   WebpageQaTool,
   DeepActionTool,
   TaskVariableStorageTool,
+  ActivateSkillTool,
 } from "./chat";
 
 export {

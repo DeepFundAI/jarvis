@@ -1,5 +1,6 @@
 import config from "../config";
 import Log from "../common/log";
+import global from "../config/global";
 import * as memory from "../memory";
 import { RetryLanguageModel } from "../llm";
 import { mergeTools } from "../common/utils";
@@ -12,6 +13,7 @@ import {
   HumanInteractTool,
   VariableStorageTool,
 } from "../tools";
+import ActivateSkillTool from "../chat/tools/activate-skill-tool";
 import {
   Tool,
   ToolSchema,
@@ -370,6 +372,13 @@ export class Agent {
       callback?.onHumanHelp
     ) {
       tools.push(new HumanInteractTool());
+    }
+    // Add skill tool when available
+    if (global.skillService) {
+      const skills = global.skillService.getAllMetadata().filter((s) => s.enabled);
+      if (skills.length > 0) {
+        tools.push(new ActivateSkillTool());
+      }
     }
     const toolNames = this.tools.map((tool) => tool.name);
     return tools.filter((tool) => toolNames.indexOf(tool.name) == -1);
